@@ -13,6 +13,10 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 - **Deltagare**, cirka 100 personer **(antagande)**. Alla är inte på Facebook, så inloggning och notiser måste fungera via e-post eller sms
 - **Tränare och administratör:** en person, ofta i farten, så allt måste fungera bra i mobilen
 
+## Avgränsning
+
+StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, graviditetsträning, online-träning, individuell träning, kostrådgivning och hinderbana. **Version 1 byggs för crosstraining**, men datamodellen görs så att en omgång alltid hör till en **träningsform**. Mammaträning, som också går i omgångar, kan då läggas till nästan gratis.
+
 ## Version 1: ersätta veckans manuella arbete
 
 **Omgångar och anmälan**
@@ -39,7 +43,7 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 - Varje deltagare har en lista över vad hen ska betala och har betalat: omgång, delbetalningar och extrapass
 - **Swish-knapp** som öppnar Swish med belopp och meddelande ifyllt. Tränaren markerar som betalt, och appen visar en översikt över vem som har betalat och vem som inte har det
 - Automatisk **betalningspåminnelse** före sista dag, bara till dem som inte betalat
-- **Digitalt kvitto** i appen i stället för pärmen
+- **Digitalt kvitto** i appen i stället för pärmen, som PDF med de uppgifter som krävs för **friskvårdsbidrag**
 
 **Notiser**
 - Pushnotiser för den som installerat appen, annars e-post, och sms för brådskande saker som ändrad lokal eller inställt pass
@@ -58,6 +62,9 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 - **Event:** till exempel AdventsFYS och AdventsMYS. Eventet har datum, pris och max antal deltagare, och anmälan kan innehålla val som tröjstorlek. Deltagaren betalar vid anmälan och kan bjuda in vänner via länk, även vänner som inte är medlemmar. Tränaren får deltagarlistan och en sammanställning av storlekar till tröjbeställningen
 - **Utmaningar:** till exempel HÖST-bingo, som en bricka i appen. Deltagaren bockar av aktiviteter med datum, och den som fyllt hela brickan kommer automatiskt med i utlottningen, som appen kan dra. Det ersätter PDF, utskrifter och foton i gruppen
 - **Presentkort och 5-gångerskort**, till exempel som vinster, med giltighetstid. De fungerar som ett slags klippkort
+- **Fler träningsformer:** mammaträning med bebis i omgångar, och bokning av individuell träning och kostrådgivning med tider i tränarens kalender
+- **Online-träning:** pass och övningsvideor i appen i stället för slutna Facebook-grupper
+- **Publik sida och intresseanmälan:** schemat och kommande omgångar hämtas automatiskt från appen, så att hemsidan aldrig är inaktuell. Intresseanmälan blir en lista som tränaren kan bjuda in från när en ny omgång öppnar
 - **Info:** omgångens info som en sida i appen i stället för PDF, och en sida om lokalerna med karta och parkering
 - **Hälsoanteckningar:** frivilliga och bara synliga för tränaren, med uttryckligt samtycke enligt GDPR
 
@@ -73,7 +80,8 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 
 ```
 Person            id, namn, e-post, telefon, roll (deltagare/tränare), notiskanaler
-Omgång            id, namn, startvecka, slutvecka, sista_betaldag, delbetal_sista_dag
+Träningsform      id, namn (crosstraining, mammaträning, ...)
+Omgång            id, träningsform, namn, startvecka, slutvecka, sista_betaldag, delbetal_sista_dag
 Prisnivå          omgång, gånger_per_vecka, pris, första_delbetalning
 Grupp             omgång, veckodag, tid, lokal, max_platser, typ (ordinarie/special/fokus)
 Passtillfälle     grupp | null, datum, tid, lokal, status (planerat/flyttat/inställt), typ (ordinarie/extra)

@@ -11,7 +11,28 @@ Underlag för appen, sammanställt från Facebook-inlägg och infobladet "Info i
 - **Kanaler i dag:** en Facebook-grupp per omgång eller träningsform, en övergripande grupp "StarkMamma – Varberg", en köp- och säljgrupp, en Facebook-sida, Instagram, hemsida, e-post, sms och papperspärmar i väntrummet
 - **Alla är inte på Facebook.** Vissa läser bara info via e-post och förutsätts alltid komma. De lämnar återbud via sms
 
-## 2. Omgångar
+## 1b. Hemsidan (starkmamma.com)
+
+Hemsidan är en enkel informationssida byggd med en hemsidebyggare. Den har inget bokningssystem, och anmälan sker via ett kontaktformulär, e-post eller Facebook. Den uppdateras sällan: senaste nyheten gäller våren 2025, och sidan om crosstraining visar fortfarande omgången v 3–15 2025.
+
+**StarkMamma erbjuder fler träningsformer än crosstraining:**
+| Träningsform | Upplägg enligt hemsidan |
+|---|---|
+| **Crosstraining** | Omgångar med fast schema i Gymmet och Ladan, se nedan. Detta är kärnverksamheten i dag |
+| **Mammaträning med bebis** | Omgångar, till exempel v 9–15 med tis och tors kl 09.30 (grundgrupp) och 10.45 (fortsättningsgrupp), totalt 14 tillfällen för 1 699 kr. Små grupper, och bebisar och syskon är välkomna |
+| **Träning under graviditet** | Individuellt, och ibland i grupp |
+| **Online-träning** | I slutna Facebook-grupper med videor på övningar och pass, eller som individuellt upplägg |
+| **Individuell träning** | Skräddarsydd, ensam eller tillsammans med några få, och kombineras ofta med kostrådgivning |
+| **Kostrådgivning och coachning** | Individuellt |
+| **Hinderbana (OCR)** | Träning i "OCR-Ladan" och skogen, och Team StarkMamma springer lopp tillsammans |
+| **Barn i rörelse** | Barngympa för 3–6 år med en vuxen. Pausad sedan 2023 |
+
+- **Intresseanmälan:** ett formulär där man anger namn, e-post, vilken träning man är intresserad av och ett fritt meddelande. Svaret kommer som e-post till tränaren
+- **Kvitton** används av många för **friskvårdsbidrag**, så kvittot måste fungera för det
+- **Tränaren:** Emma har arbetat med träning i över 25 år och är licensierad gruppträningsinstruktör och personalvetare. Hon tävlar själv i hinderbanelopp, med VM-medaljer
+- **Målgrupp:** alla som vill bli starka, oavsett kön, ålder eller form, med särskild kompetens för gravida, nyblivna mammor och kvinnor i klimakteriet
+
+## 2. Omgångar (crosstraining)
 
 - En omgång är **7 aktiva veckor**, till exempel v 45–51
 - **Pris:** 1 gång/vecka 699 kr, 2 gånger/vecka 1 299 kr, 3 gånger/vecka 1 799 kr
@@ -112,6 +133,9 @@ Ordinarie pass för v 45–51, totalt 10 grupper per vecka:
 - Hur många deltagare finns totalt, och hur många av dem är inte på Facebook?
 - Använder hon Swish Företag eller Swish Handel? Det avgör om betalningar kan stämmas av automatiskt
 - Vill hon behålla Facebook-gruppen för gemenskap och pepp och flytta det administrativa till appen, eller ersätta Facebook helt?
+- Vilka träningsformer är aktiva i dag förutom crosstraining, till exempel mammaträning, online-träning och individuell träning? Ska alla in i appen?
+- Vilka uppgifter behöver kvittot innehålla för friskvårdsbidraget, till exempel organisationsnummer och momsuppgifter?
+- Ska appen ersätta hemsidan, eller ska hemsidan länka till appen för schema och anmälan?
 - Vilka andra event och utmaningar finns under året, till exempel vårbingo eller sommarevent?
 - Finns 5-gångerskort och presentkort till försäljning, eller bara som vinster?
 - Vilka ska få sms om lediga platser i sista minuten: alla, de som står i kö, eller de som anmält att de vill ha sådana notiser?
