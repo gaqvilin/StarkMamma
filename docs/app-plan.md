@@ -87,7 +87,7 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 - Kod som bara fungerar i webbläsaren ska undvikas i de delade skärmarna, och notislogiken i backend byggs från början för native-push via Expo Push API, med Web Push som tillägg
 
 ### Gemensamt
-- **Backend: Supabase.** Postgres, inloggning med engångskod via sms eller e-post, radbaserade behörigheter och Edge Functions för push, påminnelser och schemalagda jobb, till exempel "dagen innan"-notisen. Datat lagras i EU (Stockholm)
+- **Backend: Neon Postgres och Vercel**, samma upplägg som padelappen (RankedInKids). Databasen är Neon-projektet `starkmamma` i Frankfurt (EU), och API:et körs som serverless-funktioner på Vercel (`/api`). Där finns inloggning med engångskod via sms eller e-post, utskick av push via Expo Push API och Web Push, och schemalagda jobb som "dagen innan"-notisen och betalningspåminnelser. Schemat finns i `db/migrations/`
 - **Swish:** först Swish-länkar med ifyllt belopp och meddelande och manuell markering av betalningar. Senare Swish Handel för automatisk avstämning
 - **Regler i webbappen:** kod som bara fungerar i native-appen eller bara i webbläsaren hålls i egna filer, till exempel `push.ts` och `webpush.ts`, så att konverteringen förblir smärtfri
 
@@ -132,4 +132,4 @@ Det svåraste i början är **anmälningsrusningen**, som kräver att flera samt
 - **Ovana användare:** appen måste vara extremt enkel och fungera för den som bara använder e-post eller sms
 - **Nya rutiner för tränaren:** inför appen gradvis, och behåll Facebook för det sociala
 - **Betalningar:** manuell markering först. Automatisk avstämning kräver Swish Handel
-- **GDPR:** hälsoanteckningar är känsliga personuppgifter, så de ska vara frivilliga och kräva samtycke. Uppgifterna ska lagras inom EU, och Supabase finns i en region i Stockholm
+- **GDPR:** hälsoanteckningar är känsliga personuppgifter, så de ska vara frivilliga och kräva samtycke. Uppgifterna ska lagras inom EU, och Neon-databasen ligger i Frankfurt
