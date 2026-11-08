@@ -1,3 +1,4 @@
+import type React from 'react';
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from './api';
 import { FacebookMark, GoogleMark } from './brand';
@@ -32,6 +33,21 @@ export function App() {
   if (user.role !== 'trainer') return <NotTrainer user={user} onLogout={() => setUser(null)} />;
 
   const { Page } = PAGES.find((p) => p.key === page)!;
+  return <Shell page={page} Page={Page} onLogout={() => setUser(null)} />;
+}
+
+function Shell({ page, Page, onLogout }: { page: Key; Page: () => React.ReactElement; onLogout: () => void }) {
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    api<{ people: { status: string }[] }>('people')
+      .then((r) => setPending(r.people.filter((p) => p.status === 'pending').length))
+      .catch(() => {});
+  }, [page]);
+  useEffect(() => {
+    const onChange = () => api<{ people: { status: string }[] }>('people').then((r) => setPending(r.people.filter((p) => p.status === 'pending').length));
+    addEventListener('people-changed', onChange);
+    return () => removeEventListener('people-changed', onChange);
+  }, []);
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -40,6 +56,7 @@ export function App() {
           {PAGES.map((p) => (
             <a key={p.key} href={`#${p.key}`} className={p.key === page ? 'active' : ''}>
               {p.label}
+              {p.key === 'people' && pending > 0 && <span className="badge">{pending}</span>}
             </a>
           ))}
         </nav>
@@ -47,7 +64,7 @@ export function App() {
           className="link logout"
           onClick={async () => {
             await api('logout', { method: 'POST' });
-            setUser(null);
+            onLogout();
           }}
         >
           Logga ut
@@ -73,9 +90,10 @@ interface User {
   id: string;
   name: string;
   role: 'participant' | 'trainer';
+  status: 'pending' | 'active' | 'rejected';
 }
 
-/** Samma inloggning som i mobilappen: mobilnummer eller e-post och en engångskod. */
+/** Samma inloggning som i mobilappen: e-post och en engångskod, eller Google/Facebook. */
 function Login({ onDone }: { onDone: (u: User) => void }) {
   const [identifier, setIdentifier] = useState('');
   const [step, setStep] = useState<'who' | 'code'>('who');
@@ -105,7 +123,7 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
   const start = (e: FormEvent) => {
     e.preventDefault();
     run(async () => {
-      const r = await api<{ demoCode?: string }>('auth-start', { method: 'POST', body: { identifier } });
+      const r = await api<{ demoCode?: string }>('auth-start', { method: 'POST', body: { email: identifier } });
       setDemoCode(r.demoCode ?? '');
       setStep('code');
     });
@@ -113,7 +131,7 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
   const verify = (e: FormEvent) => {
     e.preventDefault();
     run(async () => {
-      const r = await api<{ user: User }>('auth-verify', { method: 'POST', body: { identifier, code } });
+      const r = await api<{ user: User }>('auth-verify', { method: 'POST', body: { email: identifier, code } });
       onDone(r.user);
     });
   };
@@ -124,8 +142,8 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
         <form onSubmit={start} className="card login-card">
           <Logo />
           <h1>Logga in</h1>
-          <label htmlFor="who">Mobilnummer eller e-post</label>
-          <input id="who" autoFocus autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+          <label htmlFor="who">E-post</label>
+          <input id="who" type="email" autoFocus autoComplete="email" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
           {error && <p className="error">{error}</p>}
           <button className="btn primary" disabled={busy || !identifier.trim()} type="submit">
             Skicka kod
@@ -150,7 +168,7 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
         <form onSubmit={verify} className="card login-card">
           <Logo />
           <h1>Skriv koden</h1>
-          <p className="muted">Om {identifier} finns registrerad har vi skickat en kod med 6 siffror.</p>
+          <p className="muted">Vi har skickat en kod med 6 siffror till {identifier}.</p>
           {demoCode && <p className="chip accent">Demoläge: koden är {demoCode}</p>}
           <label htmlFor="code">Kod</label>
           <input id="code" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} />
@@ -159,7 +177,7 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
             Logga in
           </button>
           <button type="button" className="link" onClick={() => { setStep('who'); setCode(''); setError(''); }}>
-            Byt nummer eller e-post
+            Byt e-postadress
           </button>
         </form>
       )}
@@ -173,7 +191,12 @@ function NotTrainer({ user, onLogout }: { user: User; onLogout: () => void }) {
       <div className="card login-card">
         <Logo />
         <h1>Hej {user.name.split(' ')[0]}!</h1>
-        <p className="muted">Den här sidan är bara för Emma. Dina pass, återbud och betalningar hittar du i StarkMamma-appen.</p>
+        <p className="muted">
+          Den här sidan är bara för Emma.{' '}
+          {user.status === 'pending'
+            ? 'Ditt konto väntar på att Emma aktiverar det. Ladda ner StarkMamma-appen så får du besked där.'
+            : 'Dina pass, återbud och betalningar hittar du i StarkMamma-appen.'}
+        </p>
         <button
           className="btn"
           onClick={async () => {

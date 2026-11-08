@@ -55,3 +55,9 @@ values ('Välkommen till CT-omgång v 45–51!', 'Lämna återbud senast dagen i
 insert into notice_recipients (notice_id, person_id, read_at)
 select n.id, p.id, case when abs(hashtext(p.id::text)) % 3 = 0 then null else n.created_at + interval '1 hour' end
 from notices n cross join people p where p.role = 'participant';
+
+-- Tre personer som registrerat sig själva och väntar på aktivering.
+insert into people (name, phone, email, status, signed_up_via, created_at) values
+  ('Lovisa Wik', '0705550101', 'lovisa.wik@example.com', 'pending', 'facebook', timestamp '2026-11-07 20:14'),
+  ('Nora Falk', '0705550102', 'nora.falk@example.com', 'pending', 'google', timestamp '2026-11-08 07:42'),
+  ('Tove Sand', null, 'tove.sand@example.com', 'pending', 'email', timestamp '2026-11-08 11:05');

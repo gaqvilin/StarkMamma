@@ -46,6 +46,9 @@ export interface Person {
   name: string;
   phone: string | null;
   email: string | null;
+  status: 'pending' | 'active';
+  signed_up_via: string | null;
+  created: string;
   group_ids: string[];
 }
 

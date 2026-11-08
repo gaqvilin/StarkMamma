@@ -2,8 +2,9 @@
 import { issueToken, sessionCookie } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { APP_REDIRECT, NONCE_COOKIE, exchange, readState } from './_lib/oauth.js';
+import { findOrCreateByEmail } from './_lib/signup.js';
 
-const NOT_FOUND = 'Vi hittar inget konto med den e-postadressen. Be Emma lägga till dig, eller logga in med mobilnummer.';
+const NO_EMAIL = 'Vi fick ingen e-postadress från kontot. Logga in med din e-post och en kod i stället.';
 
 function redirect(location: string, cookies: string[] = []) {
   const headers = new Headers({ location, 'cache-control': 'no-store' });
@@ -37,14 +38,15 @@ export async function GET(request: Request) {
     [state.p, profile.subject],
   );
   if (!person) {
-    if (!profile.email || !profile.emailVerified) return fail(NOT_FOUND);
-    [person] = await q<{ id: string }>(`select id from people where lower(email) = $1`, [profile.email]);
-    if (!person) return fail(NOT_FOUND);
+    if (!profile.email || !profile.emailVerified) return fail(NO_EMAIL);
+    person = await findOrCreateByEmail(q, profile.email, state.p, profile.name);
     await q(
       `insert into identities (provider, subject, person_id, email) values ($1, $2, $3, $4) on conflict do nothing`,
       [state.p, profile.subject, person.id, profile.email],
     );
   }
+  const [{ status }] = await q<{ status: string }>(`select status from people where id = $1`, [person.id]);
+  if (status === 'rejected') return fail('Kontot är inte aktivt. Kontakta Emma.');
 
   const token = issueToken(person.id);
   return state.app

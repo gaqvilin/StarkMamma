@@ -29,10 +29,13 @@ describe('inloggning med Google och Facebook', () => {
     expect(r.headers.get('location')).toMatch(/^starkmamma:\/\/login\?token=/);
   });
 
-  it('okänd e-post får ett tydligt fel och inget konto skapas', async () => {
-    const r = await flow('google', 'okand@example.com');
-    expect(r.headers.get('location')).toMatch(/^\/\?login_error=/);
-    expect(decodeURIComponent(r.headers.get('location')!)).toContain('Be Emma lägga till dig');
+  it('okänd e-post får ett nytt konto med namnet ifyllt, som väntar på aktivering', async () => {
+    const r = await flow('google', 'helt.ny@example.com');
+    expect(r.headers.get('location')).toBe('/');
+    const cookie = r.headers.getSetCookie().find((c) => c.startsWith('sm_session='))!.split(';')[0];
+    const me = await import('../api/me');
+    const user = (await (await me.GET(new Request('http://localhost/api/me', { headers: { cookie } }))).json()).user;
+    expect(user).toMatchObject({ name: 'Demo Person', status: 'pending', needs_profile: true });
   });
 
   it('utan nonce-cookie nekas inloggningen (skydd mot förfalskade anrop)', async () => {

@@ -1,6 +1,6 @@
 // Inloggning med Google och Facebook (OAuth 2.0, authorization code-flödet på servern).
-// Kontot kopplas till en befintlig person via verifierad e-postadress; okända konton
-// skapas inte automatiskt, eftersom Emma bestämmer vilka som är deltagare.
+// Kontot kopplas till personen med samma verifierade e-postadress. Finns ingen skapas ett
+// nytt konto (namnet förifyllt) som väntar på att Emma aktiverar det.
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export type Provider = 'google' | 'facebook';
@@ -79,13 +79,14 @@ export interface ProviderProfile {
   subject: string;
   email: string | null;
   emailVerified: boolean;
+  name: string;
 }
 
 /** Byter koden mot användarens id och e-post hos leverantören. */
 export async function exchange(request: Request, p: Provider, code: string): Promise<ProviderProfile> {
   if (process.env.DEMO_DB && code.startsWith('demo:')) {
     const email = code.slice(5).toLowerCase();
-    return { subject: `demo-${p}-${email}`, email, emailVerified: true };
+    return { subject: `demo-${p}-${email}`, email, emailVerified: true, name: 'Demo Person' };
   }
   if (p === 'google') {
     const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -105,10 +106,10 @@ export async function exchange(request: Request, p: Provider, code: string): Pro
     // id_token kommer direkt från Googles token-endpoint över TLS, så innehållet kan läsas utan
     // separat signaturkontroll (OpenID Connect Core 3.1.3.7). aud kontrolleras ändå.
     const claims = JSON.parse(Buffer.from(id_token.split('.')[1], 'base64url').toString()) as {
-      sub: string; email?: string; email_verified?: boolean; aud: string;
+      sub: string; email?: string; email_verified?: boolean; aud: string; name?: string;
     };
     if (claims.aud !== process.env.GOOGLE_CLIENT_ID) throw new Error('Fel mottagare för Google-inloggningen');
-    return { subject: claims.sub, email: claims.email?.toLowerCase() ?? null, emailVerified: !!claims.email_verified };
+    return { subject: claims.sub, email: claims.email?.toLowerCase() ?? null, emailVerified: !!claims.email_verified, name: claims.name ?? '' };
   }
   const tokenUrl = new URL('https://graph.facebook.com/v19.0/oauth/access_token');
   tokenUrl.search = new URLSearchParams({
@@ -120,9 +121,9 @@ export async function exchange(request: Request, p: Provider, code: string): Pro
   const t = await fetch(tokenUrl);
   if (!t.ok) throw new Error('Facebook svarade inte');
   const { access_token } = (await t.json()) as { access_token?: string };
-  const me = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,email&access_token=${encodeURIComponent(access_token ?? '')}`);
+  const me = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name,email&access_token=${encodeURIComponent(access_token ?? '')}`);
   if (!me.ok) throw new Error('Facebook svarade inte');
-  const profile = (await me.json()) as { id: string; email?: string };
+  const profile = (await me.json()) as { id: string; name?: string; email?: string };
   // Facebook lämnar bara ut bekräftade e-postadresser.
-  return { subject: profile.id, email: profile.email?.toLowerCase() ?? null, emailVerified: !!profile.email };
+  return { subject: profile.id, email: profile.email?.toLowerCase() ?? null, emailVerified: !!profile.email, name: profile.name ?? '' };
 }

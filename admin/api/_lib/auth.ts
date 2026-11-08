@@ -1,4 +1,5 @@
-// Gemensam inloggning för mobilappen och admin: mobilnummer eller e-post + engångskod.
+// Gemensam inloggning för mobilappen och admin: e-post + engångskod, eller Google/Facebook.
+// Okända e-postadresser får ett nytt konto med status 'pending' som Emma aktiverar.
 // Efter verifiering utfärdas en signerad token (personId.utgång.signatur) som webben
 // får som cookie och mobilappen som Bearer-token. Rollen läses från databasen vid
 // varje anrop, så Emma (role = 'trainer') får admin var hon än loggar in.
@@ -26,17 +27,15 @@ export function normalizePhone(raw: string): string | null {
   return d.length >= 8 ? d : null;
 }
 
-export function parseIdentifier(raw: unknown): { email: string } | { phone: string } | null {
+export function parseEmail(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
-  const v = raw.trim();
-  if (v.includes('@')) return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? { email: v.toLowerCase() } : null;
-  const phone = normalizePhone(v);
-  return phone ? { phone } : null;
+  const v = raw.trim().toLowerCase();
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) && v.length <= 254 ? v : null;
 }
 
 export const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
-export const hashCode = (personId: string, code: string) =>
-  createHash('sha256').update(`${secret()}:${personId}:${code}`).digest('hex');
+export const hashCode = (email: string, code: string) =>
+  createHash('sha256').update(`${secret()}:${email}:${code}`).digest('hex');
 
 export function issueToken(personId: string): string {
   const payload = `${personId}.${Math.floor(Date.now() / 1000) + MAX_AGE}`;
@@ -59,8 +58,16 @@ function tokenFrom(request: Request): string | null {
 export interface User {
   id: string;
   name: string;
+  email: string | null;
+  phone: string | null;
   role: 'participant' | 'trainer';
+  status: 'pending' | 'active' | 'rejected';
+  /** Namn och telefonnummer måste fyllas i innan kontot kan aktiveras. */
+  needs_profile: boolean;
 }
+
+export const USER_SELECT = `select id, name, email, phone, role, status,
+  (coalesce(name, '') = '' or coalesce(phone, '') = '') as needs_profile from people`;
 
 export async function currentUser(request: Request): Promise<User | null> {
   if (!secret()) return null;
@@ -69,7 +76,7 @@ export async function currentUser(request: Request): Promise<User | null> {
   const [id, exp, sig] = token.split('.');
   if (!id || !exp || !sig || !safeEqual(sig, sign(`${id}.${exp}`)) || Number(exp) < Date.now() / 1000) return null;
   const q = await db();
-  const [user] = await q<User & Record<string, unknown>>(`select id, name, role from people where id = $1`, [id]);
+  const [user] = await q<User & Record<string, unknown>>(`${USER_SELECT} where id = $1`, [id]);
   return user ?? null;
 }
 

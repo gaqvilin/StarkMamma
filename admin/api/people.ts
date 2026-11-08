@@ -1,4 +1,4 @@
-// GET  /api/people            -> alla deltagare med grupper i pågående omgång
+// GET  /api/people            -> alla deltagare (aktiva och väntande) med grupper i pågående omgång
 // POST /api/people {name, phone?, email?, groupIds?} -> ny deltagare
 // PUT  /api/people {id, name, phone?, email?, groupIds} -> uppdatera deltagare och grupper
 import { requireTrainer } from './_lib/auth.js';
@@ -13,10 +13,11 @@ export async function GET(request: Request) {
   if (denied) return denied;
   const q = await db();
   const people = await q(
-    `select p.id, p.name, p.phone, p.email,
+    `select p.id, p.name, p.phone, p.email, p.status, p.signed_up_via,
+       to_char(p.created_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD HH24.MI') as created,
        coalesce(array_agg(gm.group_id) filter (where gm.group_id is not null), '{}') as group_ids
      from people p left join group_members gm on gm.person_id = p.id
-     where p.role = 'participant'
+     where p.role = 'participant' and p.status <> 'rejected'
      group by p.id order by p.name`,
   );
   return json({ people });
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   const q = await db();
   try {
     const [p] = await q<{ id: string }>(
-      `insert into people (name, phone, email) values ($1, $2, $3) returning id`,
+      `insert into people (name, phone, email, status, signed_up_via, activated_at) values ($1, $2, $3, 'active', 'admin', now()) returning id`,
       [c.name, c.phone, c.email],
     );
     await setGroups(q, p.id, c.groupIds);

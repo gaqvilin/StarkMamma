@@ -51,10 +51,11 @@ export async function POST(request: Request) {
   const recipients = await q<{ count: number }>(
     groupId
       ? `with ins as (insert into notice_recipients (notice_id, person_id)
-           select $1, person_id from group_members where group_id = $2 on conflict do nothing returning 1)
+           select $1, gm.person_id from group_members gm join people p on p.id = gm.person_id
+           where gm.group_id = $2 and p.status = 'active' on conflict do nothing returning 1)
          select count(*)::int as count from ins`
       : `with ins as (insert into notice_recipients (notice_id, person_id)
-           select $1, id from people where role = 'participant' on conflict do nothing returning 1)
+           select $1, id from people where role = 'participant' and status = 'active' on conflict do nothing returning 1)
          select count(*)::int as count from ins`,
     groupId ? [n.id, groupId] : [n.id],
   );
