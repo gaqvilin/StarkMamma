@@ -1,0 +1,104 @@
+# App-plan: StarkMamma
+
+Bygger på [kartlaggning.md](kartlaggning.md).
+
+## Mål
+
+Flytta det **administrativa** från Facebook, pärmar och sms till ett ställe, så att tränaren slipper matcha kommentarer och stämma av betalningar för hand, och så att deltagarna alltid ser sitt schema, sina tillgodo-pass och sina betalningar.
+
+Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan fortsätta för pepp och sociala inlägg medan appen tar hand om bokningar och betalningar. Det sänker tröskeln för att komma igång.
+
+## Användare
+
+- **Deltagare**, cirka 100 personer **(antagande)**. Alla är inte på Facebook, så inloggning och notiser måste fungera via e-post eller sms
+- **Tränare och administratör:** en person, ofta i farten, så allt måste fungera bra i mobilen
+
+## Version 1: ersätta veckans manuella arbete
+
+**Omgångar och anmälan**
+- Tränaren skapar en omgång med veckor, grupper (dag, tid, lokal, antal platser), priser för 1, 2 och 3 gånger i veckan, sista betalningsdag och undantag, till exempel "v 47: tors och fre flyttas till ons"
+- Deltagaren anmäler sig, väljer grupper och betalningsplan (hela beloppet eller delbetalning) och ser vad hen ska betala
+
+**Mitt schema**
+- Deltagaren ser sina kommande pass med lokal och eventuella ändringar
+- **Lämna återbud** med en knapp. Appen avgör själv om återbudet ger tillgodo, alltså om det lämnas senast dagen innan, annars "brinner" passet inne
+- **Boka ett annat pass** med ett tillgodo-pass om det finns plats, annars ställer man sig i kö. Tillgodo-pass gäller bara inom omgången
+
+**Passlista och närvaro**
+- Tränaren ser vilka som kommer på varje pass, inklusive inbokade och reserver
+- Dagen innan skickas en påminnelse till deltagarna med lokal och praktisk info, och svarsknapparna "Jag kommer" och "Jag kommer inte"
+- När en plats blir ledig får den som står först i kön en notis **(regeln behöver bekräftas)**
+- **Ledig plats i sista minuten:** när någon avbokar samma dag går en pushnotis eller ett sms direkt till kön och till dem som valt att få sådana notiser, och den som svarar först får platsen. Det ersätter inlägg som "Hojta om någon vill komma!"
+
+**Betalningar, enkel variant**
+- Varje deltagare har en lista över vad hen ska betala och har betalat: omgång, delbetalningar och extrapass
+- **Swish-knapp** som öppnar Swish med belopp och meddelande ifyllt. Tränaren markerar som betalt, och appen visar en översikt över vem som har betalat och vem som inte har det
+- Automatisk **betalningspåminnelse** före sista dag, bara till dem som inte betalat
+- **Digitalt kvitto** i appen i stället för pärmen
+
+**Notiser**
+- Pushnotiser för den som installerat appen, annars e-post, och sms för brådskande saker som ändrad lokal eller inställt pass
+
+## Version 2: extraträning och småköp
+
+- **10-kort:** köp, saldo, 12 månaders giltighet och automatiskt klipp vid bokning. Det gäller inte special- och fokuspass
+- **Drop-in för 140 kr** på lediga platser i ordinarie pass
+- **Extrapass:** tränaren lägger ut ett förslag med en minimigräns, deltagarna anmäler intresse och kan bjuda in vänner via länk. Passet bekräftas automatiskt när gränsen nås
+- **Kylflik:** deltagaren registrerar köp i appen, kanske via en QR-kod på kylen, och appen räknar ihop en summa att Swisha med jämna mellanrum
+
+## Version 3: försäljning och information
+
+- **Förbeställning av produkter:** produkt med bilder, storlekar, pris och sista dag. Tränaren får en sammanställning per storlek och en betalstatus per person
+- **Gruppbeställning:** ett formulär med länk, storlek, färg och antal i stället för skärmdumpar. Appen räknar ut rabatten, och tränaren får en samlad lista, en lista att bocka av när varorna hämtas och en betalstatus
+- **Event:** till exempel AdventsFYS och AdventsMYS. Eventet har datum, pris och max antal deltagare, och anmälan kan innehålla val som tröjstorlek. Deltagaren betalar vid anmälan och kan bjuda in vänner via länk, även vänner som inte är medlemmar. Tränaren får deltagarlistan och en sammanställning av storlekar till tröjbeställningen
+- **Utmaningar:** till exempel HÖST-bingo, som en bricka i appen. Deltagaren bockar av aktiviteter med datum, och den som fyllt hela brickan kommer automatiskt med i utlottningen, som appen kan dra. Det ersätter PDF, utskrifter och foton i gruppen
+- **Presentkort och 5-gångerskort**, till exempel som vinster, med giltighetstid. De fungerar som ett slags klippkort
+- **Info:** omgångens info som en sida i appen i stället för PDF, och en sida om lokalerna med karta och parkering
+- **Hälsoanteckningar:** frivilliga och bara synliga för tränaren, med uttryckligt samtycke enligt GDPR
+
+## Teknik (förslag)
+
+- **Webbapp som kan installeras (PWA)**, alltså inte App Store och Google Play i första läget. Deltagarna får en länk via e-post eller sms och kan lägga appen på hemskärmen. Pushnotiser fungerar på iPhone (iOS 16.4 och senare) när appen ligger på hemskärmen. Allt är en kodbas och appen kan uppdateras direkt
+- **Next.js** (React) på **Vercel**
+- **Supabase:** Postgres-databas, inloggning med engångskod via e-post eller sms (inga lösenord), och radbaserade behörigheter så att en deltagare bara ser sina egna uppgifter
+- **Swish:** börja med Swish-länkar eller QR-koder med ifyllt belopp och meddelande, och manuell markering av betalningar. Senare kan **Swish Handel** (API och callback) användas för automatisk avstämning, men det kräver ett avtal med banken och ett certifikat
+- **E-post och sms:** till exempel Resend för e-post och 46elks för sms, som är svenskt och billigt
+
+## Datamodell (grov)
+
+```
+Person            id, namn, e-post, telefon, roll (deltagare/tränare), notiskanaler
+Omgång            id, namn, startvecka, slutvecka, sista_betaldag, delbetal_sista_dag
+Prisnivå          omgång, gånger_per_vecka, pris, första_delbetalning
+Grupp             omgång, veckodag, tid, lokal, max_platser, typ (ordinarie/special/fokus)
+Passtillfälle     grupp | null, datum, tid, lokal, status (planerat/flyttat/inställt), typ (ordinarie/extra)
+Inskrivning       person, omgång, prisnivå, betalplan
+Gruppmedlemskap   person, grupp
+Bokning           person, passtillfälle, källa (ordinarie/tillgodo/drop-in/klippkort/extra), status (bokad/återbud_i_tid/sent_återbud/närvarande)
+Tillgodo          person, omgång, från_bokning, använd_på_bokning
+Kö                person, passtillfälle, position, skapad
+Klippkort         person, köpt_datum, giltigt_till, klipp_kvar
+Betalningskrav    person, belopp, förfallodag, avser (omgång/delbetalning/drop-in/klippkort/produkt/kylflik), status
+Betalning         betalningskrav, belopp, datum, sätt (swish/bank), referens
+Event, Eventanmälan (val, t.ex. storlek)        (version 3)
+Utmaning, Utmaningsaktivitet, Avbockning       (version 3)
+Produkt, Beställning, Beställningsrad, Kylköp   (version 2–3)
+Klippkort används även för 5-gångerskort och presentkort, med typ och antal klipp
+```
+
+Det svåraste i början är reglerna kring tillgodo-pass, kö och flyttade pass, så det behöver testas ordentligt.
+
+## Arbetsordning
+
+1. **Validera med tränaren:** gå igenom kartläggningen och svaren på de öppna frågorna, och visa skisser på deltagarens och tränarens viktigaste vyer
+2. **Klickbar prototyp** av "Mitt schema", återbud och passlista. Testa den på tränaren och 3–5 deltagare, gärna någon som inte är på Facebook
+3. **Bygga version 1** i ungefär 4–6 veckor **(grov uppskattning)**
+4. **Pilot** med en grupp under en omgång parallellt med Facebook
+5. **Hela omgången i appen** från nästa omgångsstart, sedan version 2 och 3 efter behov
+
+## Risker
+
+- **Ovana användare:** appen måste vara extremt enkel och fungera för den som bara använder e-post eller sms
+- **Nya rutiner för tränaren:** inför appen gradvis, och behåll Facebook för det sociala
+- **Betalningar:** manuell markering först. Automatisk avstämning kräver Swish Handel
+- **GDPR:** hälsoanteckningar är känsliga personuppgifter, så de ska vara frivilliga och kräva samtycke. Uppgifterna ska lagras inom EU, och Supabase finns i en region i Stockholm

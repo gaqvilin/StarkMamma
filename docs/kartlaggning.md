@@ -1,129 +1,108 @@
-# Kartläggning: hur verksamheten fungerar i dag
+# Kartläggning: hur StarkMamma fungerar i dag
 
-Löpande anteckningar om hur tränaren driver verksamheten via Facebook, som underlag för appen.
-Markeringen **(antagande)** betyder att det behöver bekräftas med tränaren.
+Underlag för appen, sammanställt från Facebook-inlägg och infobladet "Info inför CT-omgång v 45–51 2026".
+**(antagande)** betyder att det behöver bekräftas med tränaren. Personuppgifter, kontonummer och telefonnummer har avsiktligt utelämnats.
 
-## 1. Veckans uppsamlingsinlägg (varje helg)
+## 1. Översikt
 
-Varje helg postar tränaren ett inlägg i Facebook-gruppen där deltagarna kommenterar ändringar för kommande vecka.
+- **Verksamhet:** StarkMamma, crosstraining (CT) i två lokaler på samma gård utanför Varberg:
+  - **Gymmet:** inomhus, bara rena inomhusskor
+  - **Ladan:** "inne-ute", kallt på vintern, lager-på-lager och fodrade handskar rekommenderas
+- **Kanaler i dag:** en Facebook-grupp per omgång eller träningsform, en övergripande grupp "StarkMamma – Varberg", en köp- och säljgrupp, en Facebook-sida, Instagram, hemsida, e-post, sms och papperspärmar i väntrummet
+- **Alla är inte på Facebook.** Vissa läser bara info via e-post och förutsätts alltid komma. De lämnar återbud via sms
 
-**Vad deltagarna gör i kommentarerna:**
-- Anmäler att de **missar** sitt pass (kommande vecka eller längre fram i omgången)
-- **Bokar** sig på ett pass med lediga platser
-- Ställer sig på **reservlistan** för fulla pass
-- Ska alltid skriva både **datum/dag och tid**, eftersom tränaren annars inte hittar rätt
+## 2. Omgångar
 
-**Regler:**
-- För att få ett pass **tillgodo** eller kunna **byta** måste man lämna sin plats **i god tid**, så att någon annan hinner ta den
-- Återbud med kort varsel **samma dag** ger inget tillgodo
+- En omgång är **7 aktiva veckor**, till exempel v 45–51
+- **Pris:** 1 gång/vecka 699 kr, 2 gånger/vecka 1 299 kr, 3 gånger/vecka 1 799 kr
+- **Betalning:** via Swish eller bankgiro/konto med namnet som meddelande, senast en angiven dag före start (27/10)
+- **Delbetalning** är möjlig efter överenskommelse: 699 kr före den första sista dagen och resten senast cirka en månad senare (27/11)
+- **Kvitton** skrivs ut och läggs i pärmar i väntrummet, sorterade på förnamn
+- **Info om omgången** kommer som PDF cirka en månad före start, och en påminnelse om betalning postas dagen före sista betalningsdag
 
-**Lediga platser** listas för hand per pass, till exempel:
-| Dag  | Tid   | Plats  |
-|------|-------|--------|
-| Mån  | 12.00 | Gymmet |
-| Mån  | 17.30 | Ladan  |
-| Tis  | 06.15 | Gymmet |
-| Tis  | 17.30 | Gymmet |
-| Tors | 16.20 | Gymmet |
-| Tors | 17.30 | Ladan  |
-| Tors | 18.45 | Ladan  |
-| Fre  | 06.15 | Gymmet |
+## 3. Schema och grupper
 
-Ett exempelinlägg fick 18 kommentarer, som tränaren matchar ihop för hand.
+Ordinarie pass för v 45–51, totalt 10 grupper per vecka:
 
-## 2. Extrapass med intresseomröstning
+| Dag  | Tid   | Lokal          |
+|------|-------|----------------|
+| Mån  | 12.00 | Gymmet         |
+| Mån  | 17.30 | Ladan          |
+| Mån  | 18.45 | Gymmet         |
+| Tis  | 06.15 | Gymmet         |
+| Tis  | 17.30 | Gymmet         |
+| Tis  | 18.45 | Gymmet         |
+| Tors | 16.20 | Gymmet         |
+| Tors | 17.30 | Ladan/Gymmet   |
+| Tors | 18.45 | Ladan          |
+| Fre  | 06.15 | Gymmet         |
 
-Ibland erbjuds extrapass, till exempel "SöndagsFYS" sön 8/11 kl 17.00.
-- Deltagarna **röstar fram** passet genom att kommentera, och de uppmanas tagga vänner som kan vara intresserade
-- Passet blir av om **tillräckligt många** är intresserade **(antagande: det finns en minimigräns)**
-- **Pris: 140 kr per gång eller ett klipp på 10-kort.** Det finns alltså klippkort och drop-in vid sidan av omgångarna
+- **Undantag** förekommer: v 47 flyttas torsdags- och fredagspassen till onsdag 18/11 med samma tider, och v 51 flyttas fredagspasset till onsdag 16/12
+- **Lokalen kan ändras** från pass till pass och meddelas i förväg
+- **Grupptillhörighet:** man har en bokad plats i en eller flera grupper, beroende på om man tränar 1, 2 eller 3 gånger i veckan. Gemenskapen i den egna gruppen är viktig, och tränaren vill att man i första hand håller sig till sin tid
 
-## 3. Påminnelse inför varje pass (dagen innan)
+## 4. Återbud, tillgodo och byten
 
-Inför varje pass postas ett inlägg, till exempel "Imorgon FRE 6/11 kl 06.15 i Gymmet".
-- **Praktisk info:** bara rena inomhusskor i gymmet, ta med handduk och vattenflaska
-- **Bokade:** en lista med alla deltagare som taggas, i exemplet 11 personer
-  - Listan är uppdelad i grupper med tomrad emellan **(fråga: ordinarie, inbokade och tillgodo?)**
-- **Gilla** om du kommer och **kommentera** om du inte kommer, vilket fungerar som närvarobekräftelse
-- Återbud kommer alltså in på flera ställen: i helgens uppsamlingsinlägg **och** i varje passinlägg
-- I exemplet lämnade två personer återbud som inte fanns med på listan över bokade. Antingen var listan inte uppdaterad eller så hamnade återbuden i fel inlägg. Det är precis den här typen av fel som appen ska ta bort
+- **Tillgodo:** den som lämnar återbud **senast dagen innan** får passet tillgodo. Senare återbud innebär att passet "brinner inne"
+- **Tillgodo-pass** kan bara användas **inom samma omgång** och på ordinarie pass med lediga platser. De kan **inte** användas på extrapass
+- **Lördagens uppsamlingsinlägg:** deltagarna lämnar återbud för kommande vecka eller omgång, bokar sig på lediga platser eller ställer sig i kö. De ska alltid ange datum och tid. Tränaren listar lediga platser för hand. Ett inlägg kan få cirka 18 kommentarer att matcha ihop
+- **Sista minuten:** vid sena återbud ber tränaren i gruppen om någon kan komma
+- **Inlägg dagen innan varje pass:** tränaren taggar alla bokade. Deltagarna gillar om de kommer eller kommenterar om de inte kommer, och vid ett återbud kan den som står först på reservlistan få platsen
+  - Återbud kommer därför in på flera ställen: i uppsamlingsinlägget, i passinlägget och via sms. I ett exempel lämnade två personer återbud som inte stod med på listan över bokade
 
-## 4. Försäljning av produkter (merch)
+## 5. Extraträning, extrapass och 10-kort
 
-Ibland säljs profilprodukter, till exempel "Tröja till AdventsMYSet": en Craft-tröja med StarkMamma-tryck.
-- **Storlekar S–XXL.** Provexemplar finns i lokalen, och man får bara prova dem rena, alltså inte efter passet
-- **Beställning:** man skriver namn och storlek på ett papper i lokalen
-- **Sista dag:** fre 6/11, vilket gör det till en förbeställning med deadline
-- **Betalning:** man Swishar 280 kr till StarkMamma samtidigt som man beställer
-- Tränaren måste sedan stämma av papperslistan mot Swish-betalningarna för hand
-- **AdventsMYS** verkar vara ett återkommande event, och tröjan hör ihop med det **(fråga: vad är AdventsMYS?)**
+- **Extra ordinarie pass:** man kan träna på ett ordinarie pass utöver sitt eget om det finns plats, för 140 kr per gång
+- **Extrapass:** pass utanför schemat, till exempel "SöndagsFYS" på helger. De är öppna för alla och kostar 140 kr. Tränaren föreslår passet och "röstar fram" det i kommentarerna, där deltagarna kan tagga vänner. Passet blir av om tillräckligt många anmäler sig **(antagande: det finns en minimigräns)**
+- **10-kort:** kostar 1 200 kr och är giltigt i 12 månader från köpet. Det gäller på extrapass och på ordinarie pass med lediga platser, men **inte** på vissa special- och fokuspass
 
-## 5. Gruppbeställningar från samarbetspartner (ICIW)
+## 6. Försäljning och betalning vid sidan av träningen
 
-Ibland öppnas en gruppbeställning från klädmärket ICIW (icaniwill.se).
-- **Rabatt:** 30 % på ordinarie pris och 10 % på rea- och outletpriser
-- **Beställning:** deltagaren letar själv på ICIW:s webbplats och lägger en **skärmdump** av det hen vill ha som kommentar i inlägget
-- **Sista dag:** sön 1/11 kl 12.00
-- Tränaren lägger en samlad beställning och får allt levererat till lokalen
-- **Deltagaren hämtar och betalar** direkt till StarkMamma när varorna kommit, alltså betalning i efterhand
-- Det manuella arbetet består i att tolka skärmdumpar, föra över dem till en beställning, räkna ut rabatterat pris per person, följa upp vem som hämtat och vem som betalat, och kanske hantera returer
+- **Kyl med drycker och bars** till självkostnadspris. Man skriver namn och kryssar i en pärm, och med jämna mellanrum Swishar man totalsumman. Det är alltså en löpande kundflik
+- **Produkter i gymmet**, till exempel Washologi, VisionHaircare, ICIW, Holistic och Team Sportia, betalas med Swish direkt vid köp
+- **Profilprodukter med förbeställning:** till exempel en Craft-tröja med StarkMamma-tryck till eventet AdventsMYS, i storlekar S–XXL för 280 kr. Man provar storlek i lokalen, skriver upp sig på ett papper och Swishar senast en angiven dag
+- **Gruppbeställning från ICIW:** 30 % rabatt, eller 10 % på rea. Deltagaren lägger en skärmdump av sin önskade vara i Facebook-inlägget senast en angiven dag. Tränaren beställer allt samlat, och varorna hämtas och betalas i lokalen
 
-## 6. Omgångar: info och betalning
+## 7. Event och engagemang mellan omgångarna
 
-Gruppen heter **"Crosstraining i StarkMamma-gymmet & Ladan!"**, och träningsformen är crosstraining (CT).
-- Träningen säljs i **CT-omgångar**. Nästa omgång är **v 45–51 2026**, alltså 7 veckor fram till jul
-- Ungefär en månad före start, den 4/10, postas ett **infoblad som PDF** ("Info inför CT-omgång v 45–51 2026.pdf")
-- Det finns en **sista betalningsdag** innan omgången börjar (tis 27/10, en knapp vecka före start)
-- Dagen innan postas en **påminnelse** som tackar alla för att de "hjälper mig att se till att detta blir gjort". Att följa upp betalningar är alltså en känd huvudvärk
-- 12 gillningar, vilket troligen betyder "jag har betalat" eller "jag har sett det" **(antagande)**
+**AdventsFYS och AdventsMYS** är en årlig tradition.
+- Söndag 29/11 kl 16.00–17.30: ett pass i Ladan och därefter fika och häng i gymmet
+- **Pris 280 kr**, och då ingår passet, profiltröjan och fikan. Tröjan är alltså inte en separat produkt, utan en del av eventet med storleksval
+- **Anmälan** görs med en kommentar, och man uppmanas tagga vänner. Tränaren håller en lista över bokade, i exemplet 21 personer eller fler, alltså fler än i ett vanligt pass
+- Tröjan måste beställas långt i förväg, så anmälan öppnar cirka 6 veckor innan
 
-## 7. Vad det säger om verksamheten
+**HÖST-bingo** körs under uppehållet mellan omgångarna (v 43–44, 17/10–1/11).
+- En PDF med en bingobricka med 12 aktiviteter, till exempel att promenera 8 km, simma, ta ett höstbad, vila i tystnad eller köra intervallpass enligt ett beskrivet upplägg. Den finns också utskriven i väntrummet
+- Man skriver datum i rutan när man gjort aktiviteten och får bara kryssa en gång per aktivitet
+- Man fotar sin **fulla bricka** och lägger upp bilden i gruppen senast en angiven tid för att vara med i utlottningen
+- **Vinster**, delvis sponsrade av ICIW: två **5-gångerskort** för crosstraining, giltiga till ett visst datum, och ett **presentkort på enskild tid med tränaren** för till exempel kostrådgivning eller träningsupplägg
+- Syftet är att hålla deltagarna aktiva och engagerade mellan omgångarna
 
-- **Omgångar:** crosstraining säljs i omgångar om cirka 7 veckor (till exempel v 45–51) som betalas i förskott före en sista dag
-- **Ordinarie pass:** varje deltagare har en fast tid per vecka **(antagande)**
-- **Två lokaler:** "Gymmet" och "Ladan"
-- **Begränsat antal platser per pass**, och när en plats lämnas kan någon annan ta den
-- **Tillgodo-pass:** ett uteblivet pass kan bytas mot ett annat om man lämnat återbud i tid, så tränaren måste hålla koll på ett saldo per person
-- **Betalformer:** omgång, 10-kort och drop-in för 140 kr
-- **Varumärke:** StarkMamma, med eget Swish-nummer
-- **Sidointäkter:** profilprodukter, event och gruppbeställningar med rabatt från ICIW
-- **Passtyper:** ordinarie pass och extrapass, där extrapassen kräver tillräckligt intresse
-- Det manuella arbetet ligger i att läsa kommentarer, uppdatera vilka platser som är lediga, flytta folk från reservlistan och komma ihåg tillgodo-pass
+**Platser som blir lediga i sista minuten:** när många avbokar samma dag lägger tränaren ut ett inlägg som "Oj så det avbokas idag 17.30, hojta om någon vill komma!". Platserna går ofta inte att fylla så sent. Snabba notiser till rätt personer skulle göra stor skillnad
 
-## 8. Vad appen behöver göra (första utkast)
+## 8. Övrigt
 
-0. **Omgångsanmälan:** tränaren publicerar en ny omgång med info, priser och sista betalningsdag. Deltagaren anmäler sig, väljer ordinarie pass och betalar, får automatiska påminnelser om hen inte betalat, och tränaren ser vem som betalat
-1. **Schema per omgång:** pass med dag, tid, lokal och max antal platser
-2. **Ordinarie plats:** varje deltagare kopplas till sitt fasta pass i omgången
-3. **Lämna återbud** med ett klick, där appen själv vet datum och tid och platsen blir ledig direkt
-4. **Tillgodo-regler:** återbud före en gräns, till exempel dagen innan, ger ett tillgodo-pass och senare återbud ger inget
-5. **Boka ledig plats** med tillgodo-pass, och se lediga platser i realtid i stället för en lista som tränaren skriver
-6. **Reservlista** per pass, med notis när en plats blir ledig och möjlighet att bli flyttad in automatiskt eller ta platsen med ett klick
-7. **Påminnelse dagen innan** via pushnotis, med praktisk info och knapparna "Jag kommer" och "Jag kommer inte" (återbud enligt samma regler som ovan)
-8. **Extrapass:** tränaren föreslår ett pass, deltagare anmäler intresse, passet bekräftas när minimigränsen nås och betalas med klipp eller 140 kr
-9. **Klippkort:** saldo per deltagare som dras automatiskt vid bokning
-10. **Förbeställning av produkter:** produkt med bild, länk, storlekar, pris och sista dag. Deltagaren väljer storlek och betalar, och tränaren får en färdig beställningslista per storlek
-11. **Gruppbeställning:** tränaren öppnar ett beställningsfönster med leverantör, rabattsatser och sista dag. Deltagaren fyller i produktlänk eller artikelnummer, storlek, färg och antal i ett formulär i stället för att skicka en skärmdump. Appen räknar ut priset och ger tränaren en sammanställd lista att beställa från, och sedan bockar tränaren av vad som hämtats och betalats
-12. **Betalningar:** samla omgång, klippkort, drop-in och produkter, med Swish-integration eller åtminstone markeringen "betald", så att avstämningen sker automatiskt
-13. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
+- **Hälsoinformation:** deltagare uppmanas berätta om skador och annat tränaren behöver veta för att kunna anpassa övningar. Det är känsliga personuppgifter
+- **Praktisk info om lokalerna:** vägbeskrivning, parkeringsregler, toalett, vattenkran, låda med "bra att ha"-saker, medicinskåp och var kvarglömda saker hamnar
 
-## 9. Öppna frågor till tränaren
+## 9. Var tiden försvinner i dag
 
-- **Infobladet (PDF) för CT-omgång v 45–51** är det viktigaste underlaget, eftersom det troligen innehåller priser, regler, betalningssätt och passval
-- Får deltagare som redan går behålla sin ordinarie tid till nästa omgång, och i så fall hur länge?
-- Har alla exakt ett ordinarie pass per vecka, eller finns det 2x/vecka-kort?
-- Vad betyder "i god tid" exakt? Är det 24 timmar innan, dagen innan eller något annat?
-- Hur många platser finns per pass? Skiljer det sig mellan Gymmet och Ladan?
-- Kan tillgodo-pass sparas till nästa omgång, eller förfaller de?
+1. **Byten och återbud:** matcha kommentarer från flera inlägg och sms mot schemat, hålla koll på tillgodo-pass och reservlistor, och uppdatera listor för hand
+2. **Betalningar:** stämma av omgångar, delbetalningar, extrapass, 10-kort, kylflikar, produkter och gruppbeställningar mot Swish och bank, påminna om betalning och skriva ut kvitton
+3. **Fylla platser i sista minuten:** ett inlägg som få ser i tid
+4. **Beställningar:** tolka skärmdumpar och papperslistor och sammanställa dem till beställningar
+5. **Information:** samma info sprids via PDF, Facebook, e-post och sms
+
+## 10. Öppna frågor till tränaren
+
+- Hur många platser har varje grupp? Skiljer det sig mellan Gymmet och Ladan?
 - Reservlista: får den som står först platsen automatiskt, eller den som svarar först?
-- Hur många klipp har ett 10-kort, vad kostar det, och har det ett sista giltighetsdatum?
-- Hur många behövs för att ett extrapass ska bli av? Får man fortfarande boka extrapass om omgången är full?
-- Vad betyder grupperna i listan över bokade?
-- Hur betalas 140 kr i dag, till exempel med Swish?
-- Vad är AdventsMYS, och finns det fler event under året, till exempel med anmälan och avgift?
-- Hur ofta säljs produkter, och sker det alltid som förbeställning?
-- Är Swish för företag kopplat till ett företagskonto? Det avgör om betalningar kan stämmas av automatiskt
-- ICIW: hur lägger tränaren beställningen, via ett återförsäljarkonto, e-post eller deras webbshop? Finns det ett API eller en beställningsmall?
-- Hur hanteras returer och fel storlekar i gruppbeställningar?
-- Finns det fler samarbetspartner än ICIW och Craft?
-- Vad mer sker i gruppen, till exempel peppning, info och träningstips, som ska finnas kvar?
+- Får deltagare som redan går behålla sin plats till nästa omgång? Hur går anmälan till en ny omgång till?
+- Hur många behöver anmäla sig för att ett extrapass ska bli av? Vilka special- och fokuspass finns?
+- Hur många deltagare finns totalt, och hur många av dem är inte på Facebook?
+- Använder hon Swish Företag eller Swish Handel? Det avgör om betalningar kan stämmas av automatiskt
+- Vill hon behålla Facebook-gruppen för gemenskap och pepp och flytta det administrativa till appen, eller ersätta Facebook helt?
+- Vilka andra event och utmaningar finns under året, till exempel vårbingo eller sommarevent?
+- Finns 5-gångerskort och presentkort till försäljning, eller bara som vinster?
+- Vilka ska få sms om lediga platser i sista minuten: alla, de som står i kö, eller de som anmält att de vill ha sådana notiser?
+- Hur lägger hon ICIW-beställningen, och hur hanteras returer?
