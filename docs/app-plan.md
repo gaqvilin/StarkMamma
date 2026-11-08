@@ -68,13 +68,16 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 - **Info:** omgångens info som en sida i appen i stället för PDF, och en sida om lokalerna med karta och parkering
 - **Hälsoanteckningar:** frivilliga och bara synliga för tränaren, med uttryckligt samtycke enligt GDPR
 
-## Teknik (förslag)
+## Teknik
 
-- **Webbapp som kan installeras (PWA)**, alltså inte App Store och Google Play i första läget. Deltagarna får en länk via e-post eller sms och kan lägga appen på hemskärmen. Pushnotiser fungerar på iPhone (iOS 16.4 och senare) när appen ligger på hemskärmen. Allt är en kodbas och appen kan uppdateras direkt
-- **Next.js** (React) på **Vercel**
-- **Supabase:** Postgres-databas, inloggning med engångskod via e-post eller sms (inga lösenord), och radbaserade behörigheter så att en deltagare bara ser sina egna uppgifter
-- **Swish:** börja med Swish-länkar eller QR-koder med ifyllt belopp och meddelande, och manuell markering av betalningar. Senare kan **Swish Handel** (API och callback) användas för automatisk avstämning, men det kräver ett avtal med banken och ett certifikat
-- **E-post och sms:** till exempel Resend för e-post och 46elks för sms, som är svenskt och billigt
+**En native-app för iPhone och Android med pushnotiser.** Tränaren ska kunna nå deltagarna direkt i mobilen, vilket i dag är huvudskälet till att Facebook används.
+
+- **Expo (React Native) och TypeScript:** en kodbas ger riktiga appar i App Store och Google Play. Samma kod kan också köras som webbversion, till exempel för prototyper och för deltagare som inte vill installera appen
+- **Pushnotiser:** `expo-notifications` och Expo Push API, som levererar via Apple (APNs) och Google (FCM). Varje deltagares push-token sparas i backend, och tränaren skickar till alla, en grupp, de som inte betalat eller en kö direkt från appen. E-post och sms används som reserv för den som saknar appen eller har stängt av notiser
+- **Bygge och publicering:** EAS Build och Submit ger bygget i molnet, och EAS Update ger snabba uppdateringar utan ny granskning i App Store
+- **Backend: Supabase.** Postgres, inloggning med engångskod via sms eller e-post, radbaserade behörigheter och Edge Functions för push, påminnelser och schemalagda jobb, till exempel "dagen innan"-notisen. Datat lagras i EU (Stockholm)
+- **Swish:** först Swish-länkar med ifyllt belopp och meddelande och manuell markering av betalningar. Senare Swish Handel för automatisk avstämning
+- **Konton som krävs:** Apple Developer (99 USD per år) och Google Play Console (25 USD en gång), helst i StarkMammas namn
 
 ## Datamodell (grov)
 
@@ -106,7 +109,7 @@ Det svåraste i början är **anmälningsrusningen**, som kräver att flera samt
 ## Arbetsordning
 
 1. **Validera med tränaren:** gå igenom kartläggningen och svaren på de öppna frågorna, och visa skisser på deltagarens och tränarens viktigaste vyer
-2. **Klickbar prototyp** av "Mitt schema", återbud och passlista. Testa den på tränaren och 3–5 deltagare, gärna någon som inte är på Facebook
+2. **Klickbar prototyp** (finns i `app/`) av "Mitt schema", återbud, bokning, anmälan, passlista, push och betalningar. Testa den på tränaren och 3–5 deltagare, gärna någon som inte är på Facebook
 3. **Bygga version 1** i ungefär 4–6 veckor **(grov uppskattning)**
 4. **Pilot** med en grupp under en omgång parallellt med Facebook
 5. **Hela omgången i appen** från nästa omgångsstart, sedan version 2 och 3 efter behov
