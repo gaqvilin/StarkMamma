@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BookScreen, HomeScreen, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
 import { Notice, StoreProvider, useStore } from './src/store';
+import { BellIcon } from './src/icons';
 import { colors } from './src/theme';
 
 type Role = 'deltagare' | 'tränare';
@@ -15,7 +16,6 @@ const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentTy
     { key: 'book', label: 'Boka', Screen: BookScreen },
     { key: 'signup', label: 'Anmälan', Screen: SignupScreen },
     { key: 'pay', label: 'Betala', Screen: PayScreen },
-    { key: 'inbox', label: 'Notiser', Screen: InboxScreen },
   ],
   tränare: [
     { key: 'roster', label: 'Pass', Screen: RosterScreen },
@@ -82,13 +82,24 @@ function Shell() {
   const { Screen } = current;
   const scroll = useRef<ScrollViewInstance>(null);
   const { inbox, openNotice, dispatch } = useStore();
+  const [showInbox, setShowInbox] = useState(false);
+  const [seen, setSeen] = useState(inbox.length - 1);
+  const unread = Math.max(0, inbox.length - seen);
   const showInfo = role === 'deltagare' && !!openNotice;
 
+  const toTop = () => scroll.current?.scrollTo({ y: 0, animated: false });
   const go = (r: Role, k: string) => {
     setRole(r);
     setTab((t) => ({ ...t, [r]: k }));
+    setShowInbox(false);
     if (openNotice) dispatch({ type: 'closeNotice' });
-    scroll.current?.scrollTo({ y: 0, animated: false });
+    toTop();
+  };
+  const openInbox = () => {
+    if (openNotice) dispatch({ type: 'closeNotice' });
+    setShowInbox(true);
+    setSeen(inbox.length);
+    toTop();
   };
 
   return (
@@ -99,22 +110,37 @@ function Shell() {
           <Text style={styles.logoStark}>STARK</Text>
           <Text style={styles.logoMamma}>mamma</Text>
         </View>
-        {role === 'tränare' ? <Text style={styles.adminLabel}>Emma</Text> : null}
+        {role === 'tränare' ? (
+          <Text style={styles.adminLabel}>Emma</Text>
+        ) : (
+          <Pressable
+            onPress={openInbox}
+            accessibilityRole="button"
+            accessibilityLabel={unread ? `Notiser, ${unread} olästa` : 'Notiser'}
+            style={[styles.bell, showInbox && !showInfo && { backgroundColor: '#EAE5DF' }]}
+          >
+            <BellIcon size={24} />
+            {unread ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        )}
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
-        {showInfo ? <InfoPageScreen /> : <Screen />}
+        {showInfo ? <InfoPageScreen /> : showInbox && role === 'deltagare' ? <InboxScreen /> : <Screen />}
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.tabBar}>
         <View style={{ flexDirection: 'row' }}>
           {tabs.map((t) => {
-            const active = t.key === current.key;
+            const active = t.key === current.key && !(role === 'deltagare' && (showInbox || showInfo));
             return (
               <Pressable key={t.key} onPress={() => go(role, t.key)} style={styles.tab}>
                 <View style={[styles.tabIndicator, active && { backgroundColor: colors.ink }]} />
                 <Text style={[styles.tabLabel, active && { color: colors.ink, fontWeight: '800' }]}>{t.label}</Text>
-                {t.key === 'inbox' && inbox.length > 1 ? <View style={styles.dot} /> : null}
               </Pressable>
             );
           })}
@@ -124,10 +150,11 @@ function Shell() {
       <Toast />
       {role === 'deltagare' ? <PushBanner
           onOpen={(n) => {
+            setSeen(inbox.length);
             if (n.page) {
               dispatch({ type: 'openNotice', id: n.id });
-              scroll.current?.scrollTo({ y: 0, animated: false });
-            } else go('deltagare', 'inbox');
+              toTop();
+            } else openInbox();
           }}
         /> : null}
     </SafeAreaView>
@@ -159,13 +186,28 @@ const styles = StyleSheet.create({
   logo: { backgroundColor: colors.brand, paddingHorizontal: 10, paddingVertical: 3, transform: [{ skewX: '-8deg' }] },
   logoStark: { color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: 20, letterSpacing: 1, lineHeight: 22 },
   logoMamma: { color: '#fff', fontStyle: 'italic', fontSize: 10, textAlign: 'right', marginTop: -3 },
+  bell: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 3,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   adminLabel: { fontSize: 14, fontWeight: '700', color: colors.muted },
   content: { padding: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
   tabBar: { borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
   tab: { flex: 1, alignItems: 'center', paddingTop: 0, paddingBottom: 12 },
   tabIndicator: { height: 3, width: 28, borderRadius: 2, backgroundColor: 'transparent', marginBottom: 10 },
   tabLabel: { fontSize: 13, color: colors.muted },
-  dot: { position: 'absolute', top: 10, right: '30%', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
   banner: {
     position: 'absolute',
     top: 8,

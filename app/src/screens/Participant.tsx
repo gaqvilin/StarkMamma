@@ -393,7 +393,7 @@ export function InboxScreen() {
   return (
     <View>
       <H1>Notiser</H1>
-      {s.inbox.map((n) => (
+      {[...s.inbox].sort((x, y) => y.at.getTime() - x.at.getTime()).map((n) => (
         <Card key={n.id}>
           <Text style={{ fontWeight: '700', fontSize: 15 }}>{n.title}</Text>
           <P style={{ marginTop: 4 }}>{n.body}</P>
