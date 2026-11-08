@@ -2,7 +2,8 @@
 // Rollen kommer från servern: Emma är tränare och kommer till admin, alla andra är deltagare.
 // I prototypen finns ingen server: koden är alltid 123456 och Emmas e-post ger tränarrollen.
 import React, { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { FacebookMark, GoogleMark } from '../icons';
 import { colors } from '../theme';
 import { Button, Card, H1, P } from '../ui';
 
@@ -42,6 +43,15 @@ export function LoginScreen({ onDone }: { onDone: (role: Role) => void }) {
             style={input}
           />
           <Button title="Skicka kod" disabled={!valid} onPress={() => { setError(''); setStep('code'); }} style={{ marginTop: 14 }} />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 18 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+            <Text style={{ color: colors.muted }}>eller</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+          </View>
+          {/* I den riktiga appen anropas signInWith('google' | 'facebook') i src/oauth.ts. */}
+          <SocialButton label="Fortsätt med Google" mark={<GoogleMark />} onPress={() => onDone('deltagare')} />
+          <SocialButton label="Fortsätt med Facebook" mark={<FacebookMark />} onPress={() => onDone('deltagare')} />
         </>
       ) : (
         <>
@@ -73,8 +83,33 @@ export function LoginScreen({ onDone }: { onDone: (role: Role) => void }) {
 
       <Card style={{ marginTop: 28, backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }}>
         <P style={{ fontWeight: '700' }}>Prototyp</P>
-        <P muted>Koden är alltid {DEMO_CODE}. Logga in med {EMMA} för att komma till Emmas admin. Alla andra nummer och adresser loggar in som deltagaren Sara.</P>
+        <P muted>Koden är alltid {DEMO_CODE}. Logga in med {EMMA} för att komma till Emmas admin. Alla andra nummer och adresser, och Google och Facebook, loggar in som deltagaren Sara.</P>
       </Card>
     </View>
+  );
+}
+
+function SocialButton({ label, mark, onPress }: { label: string; mark: React.ReactNode; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: colors.line,
+        backgroundColor: colors.card,
+        borderRadius: 999,
+        paddingVertical: 13,
+        marginBottom: 10,
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      {mark}
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{label}</Text>
+    </Pressable>
   );
 }

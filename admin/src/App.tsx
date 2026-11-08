@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from './api';
+import { FacebookMark, GoogleMark } from './brand';
 import { NoticesPage } from './pages/Notices';
 import { PeoplePage } from './pages/People';
 import { RoundPage } from './pages/Round';
@@ -80,8 +81,14 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
   const [step, setStep] = useState<'who' | 'code'>('who');
   const [code, setCode] = useState('');
   const [demoCode, setDemoCode] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => new URLSearchParams(location.search).get('login_error') ?? '');
   const [busy, setBusy] = useState(false);
+  const [providers, setProviders] = useState<string[]>([]);
+
+  useEffect(() => {
+    api<{ providers: string[] }>('auth-providers').then((r) => setProviders(r.providers)).catch(() => {});
+    if (location.search) history.replaceState(null, '', location.pathname + location.hash);
+  }, []);
 
   const run = async (fn: () => Promise<void>) => {
     setError('');
@@ -123,6 +130,21 @@ function Login({ onDone }: { onDone: (u: User) => void }) {
           <button className="btn primary" disabled={busy || !identifier.trim()} type="submit">
             Skicka kod
           </button>
+          {providers.length > 0 && (
+            <>
+              <div className="or"><span>eller</span></div>
+              {providers.includes('google') && (
+                <a className="btn social" href="/api/oauth-start?provider=google">
+                  <GoogleMark /> Fortsätt med Google
+                </a>
+              )}
+              {providers.includes('facebook') && (
+                <a className="btn social" href="/api/oauth-start?provider=facebook">
+                  <FacebookMark /> Fortsätt med Facebook
+                </a>
+              )}
+            </>
+          )}
         </form>
       ) : (
         <form onSubmit={verify} className="card login-card">

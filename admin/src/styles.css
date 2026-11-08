@@ -19,7 +19,7 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body, #root { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
 h1 { font-size: 28px; letter-spacing: -0.5px; }
@@ -148,10 +148,14 @@ textarea { resize: vertical; }
 .phone-page p { margin: 8px 0 0; }
 
 /* Login */
+.social { color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; padding: 10px 16px; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 10px 0 2px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .login { min-height: 100%; display: grid; place-items: center; padding: 24px; }
 .login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; }
 .login-card h1 { margin: 16px 0 8px; }
 .login-card .btn { margin-top: 8px; }
+.login-card .btn.primary { align-self: stretch; }
 
 @media (max-width: 1100px) {
   .with-drawer { margin-right: 0; }

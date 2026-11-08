@@ -14,6 +14,8 @@ Mobilappen och admin har samma inloggning. Man skriver sitt mobilnummer eller si
 - **Emma** (`role = 'trainer'`) kommer till admin, både i mobilappen och här på datorn
 - **Deltagare** kommer till sin vanliga vy i appen. Om de öppnar admin på datorn får de en hänvisning till appen
 
+Man kan också logga in med **Google eller Facebook** (`/api/oauth-start` och `/api/oauth-callback`). Första gången kopplas kontot via e-postadressen, som måste finnas hos en registrerad deltagare eller hos Emma. Därefter känns kontot igen via Google- eller Facebook-id:t, och tabellen `identities` håller kopplingen. Inga nya konton skapas automatiskt. Mobilappen öppnar samma flöde i en säker webbläsarruta (`app/src/oauth.ts`) och får tillbaka en token via `starkmamma://login`.
+
 Webben får inloggningen som en cookie och mobilappen som en token. Koden gäller i 10 minuter, kan bara användas en gång och spärras efter 5 felaktiga försök. Man kan inte be om en ny kod oftare än var 30:e sekund.
 
 Samma upplägg som padelappen: Vite och React i `src/`, API som Vercel-funktioner i `api/` och databas på Neon (se `../db`).
@@ -38,5 +40,8 @@ Projektets rotkatalog är `admin`. Miljövariablerna som behövs:
 | `AUTH_SECRET` | Lång slumpad sträng som signerar inloggningen |
 | `ELKS_API_USER`, `ELKS_API_PASSWORD` | 46elks, för koder via sms |
 | `RESEND_API_KEY`, `MAIL_FROM` | Resend, för koder via e-post |
+| `PUBLIC_URL` | Adressen till admin, t.ex. `https://admin.starkmamma.com` (används som återkomstadress för Google och Facebook) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth-klient från Google Cloud Console |
+| `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | App från Meta for Developers |
 
 Notiser sparas med en mottagarlista. Själva leveransen som pushnotis kopplas på när deltagarappen registrerar push-token.
