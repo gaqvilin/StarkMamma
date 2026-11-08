@@ -58,7 +58,17 @@ Ibland säljs profilprodukter, till exempel "Tröja till AdventsMYSet": en Craft
 - Tränaren måste sedan stämma av papperslistan mot Swish-betalningarna för hand
 - **AdventsMYS** verkar vara ett återkommande event, och tröjan hör ihop med det **(fråga: vad är AdventsMYS?)**
 
-## 5. Vad det säger om verksamheten
+## 5. Gruppbeställningar från samarbetspartner (ICIW)
+
+Ibland öppnas en gruppbeställning från klädmärket ICIW (icaniwill.se).
+- **Rabatt:** 30 % på ordinarie pris och 10 % på rea- och outletpriser
+- **Beställning:** deltagaren letar själv på ICIW:s webbplats och lägger en **skärmdump** av det hen vill ha som kommentar i inlägget
+- **Sista dag:** sön 1/11 kl 12.00
+- Tränaren lägger en samlad beställning och får allt levererat till lokalen
+- **Deltagaren hämtar och betalar** direkt till StarkMamma när varorna kommit, alltså betalning i efterhand
+- Det manuella arbetet består i att tolka skärmdumpar, föra över dem till en beställning, räkna ut rabatterat pris per person, följa upp vem som hämtat och vem som betalat, och kanske hantera returer
+
+## 6. Vad det säger om verksamheten
 
 - **Omgångar:** träningen säljs i perioder om flera veckor **(antagande: deltagaren köper en omgång)**
 - **Ordinarie pass:** varje deltagare har en fast tid per vecka **(antagande)**
@@ -67,11 +77,11 @@ Ibland säljs profilprodukter, till exempel "Tröja till AdventsMYSet": en Craft
 - **Tillgodo-pass:** ett uteblivet pass kan bytas mot ett annat om man lämnat återbud i tid, så tränaren måste hålla koll på ett saldo per person
 - **Betalformer:** omgång, 10-kort och drop-in för 140 kr
 - **Varumärke:** StarkMamma, med eget Swish-nummer
-- **Sidointäkter:** profilprodukter och event
+- **Sidointäkter:** profilprodukter, event och gruppbeställningar med rabatt från ICIW
 - **Passtyper:** ordinarie pass och extrapass, där extrapassen kräver tillräckligt intresse
 - Det manuella arbetet ligger i att läsa kommentarer, uppdatera vilka platser som är lediga, flytta folk från reservlistan och komma ihåg tillgodo-pass
 
-## 6. Vad appen behöver göra (första utkast)
+## 7. Vad appen behöver göra (första utkast)
 
 1. **Schema per omgång:** pass med dag, tid, lokal och max antal platser
 2. **Ordinarie plats:** varje deltagare kopplas till sitt fasta pass i omgången
@@ -83,10 +93,11 @@ Ibland säljs profilprodukter, till exempel "Tröja till AdventsMYSet": en Craft
 8. **Extrapass:** tränaren föreslår ett pass, deltagare anmäler intresse, passet bekräftas när minimigränsen nås och betalas med klipp eller 140 kr
 9. **Klippkort:** saldo per deltagare som dras automatiskt vid bokning
 10. **Förbeställning av produkter:** produkt med bild, länk, storlekar, pris och sista dag. Deltagaren väljer storlek och betalar, och tränaren får en färdig beställningslista per storlek
-11. **Betalningar:** samla omgång, klippkort, drop-in och produkter, med Swish-integration eller åtminstone markeringen "betald", så att avstämningen sker automatiskt
-12. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
+11. **Gruppbeställning:** tränaren öppnar ett beställningsfönster med leverantör, rabattsatser och sista dag. Deltagaren fyller i produktlänk eller artikelnummer, storlek, färg och antal i ett formulär i stället för att skicka en skärmdump. Appen räknar ut priset och ger tränaren en sammanställd lista att beställa från, och sedan bockar tränaren av vad som hämtats och betalats
+12. **Betalningar:** samla omgång, klippkort, drop-in och produkter, med Swish-integration eller åtminstone markeringen "betald", så att avstämningen sker automatiskt
+13. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
 
-## 7. Öppna frågor till tränaren
+## 8. Öppna frågor till tränaren
 
 - Hur långa är omgångarna, och vad kostar en omgång? Hur tas betalt?
 - Har alla exakt ett ordinarie pass per vecka, eller finns det 2x/vecka-kort?
@@ -101,4 +112,7 @@ Ibland säljs profilprodukter, till exempel "Tröja till AdventsMYSet": en Craft
 - Vad är AdventsMYS, och finns det fler event under året, till exempel med anmälan och avgift?
 - Hur ofta säljs produkter, och sker det alltid som förbeställning?
 - Är Swish för företag kopplat till ett företagskonto? Det avgör om betalningar kan stämmas av automatiskt
+- ICIW: hur lägger tränaren beställningen, via ett återförsäljarkonto, e-post eller deras webbshop? Finns det ett API eller en beställningsmall?
+- Hur hanteras returer och fel storlekar i gruppbeställningar?
+- Finns det fler samarbetspartner än ICIW och Craft?
 - Vad mer sker i gruppen, till exempel peppning, info och träningstips, som ska finnas kvar?
