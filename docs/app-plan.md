@@ -10,7 +10,7 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 
 ## Användare
 
-- **Deltagare**, cirka 100 personer **(antagande)**. Alla är inte på Facebook, så inloggning och notiser måste fungera via e-post eller sms
+- **Deltagare**, cirka 100 personer **(antagande)**. Alla är inte på Facebook, så inloggning och notiser måste fungera via e-post
 - **Tränare och administratör:** en person, ofta i farten, så allt måste fungera bra i mobilen
 
 ## Avgränsning
@@ -42,7 +42,7 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 - Tränaren ser vilka som kommer på varje pass, inklusive inbokade och reserver
 - Dagen innan skickas en påminnelse till deltagarna med lokal och praktisk info, och svarsknapparna "Jag kommer" och "Jag kommer inte"
 - När en plats blir ledig får den som står först i kön en notis **(regeln behöver bekräftas)**
-- **Ledig plats i sista minuten:** när någon avbokar samma dag går en pushnotis eller ett sms direkt till kön och till dem som valt att få sådana notiser, och den som svarar först får platsen. Det ersätter inlägg som "Hojta om någon vill komma!"
+- **Ledig plats i sista minuten:** när någon avbokar samma dag går en pushnotis direkt till kön och till dem som valt att få sådana notiser, och den som svarar först får platsen. Det ersätter inlägg som "Hojta om någon vill komma!"
 
 **Betalningar, enkel variant**
 - Varje deltagare har en lista över vad hen ska betala och har betalat: omgång, delbetalningar och extrapass
@@ -52,7 +52,7 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 
 **Notiser**
 - **Notis med informationssida:** Emma kan koppla en sida med rubrik, längre text och en länk till en notis, och när deltagaren trycker på notisen öppnas sidan. Det används för sådant som inte har en egen funktion i appen, till exempel event, gruppbeställningar, utmaningar och ändrade rutiner. Sidan finns kvar i inkorgen
-- Pushnotiser för den som installerat appen, annars e-post, och sms för brådskande saker som ändrad lokal eller inställt pass
+- Pushnotiser för den som installerat appen, annars e-post. Inga sms, eftersom de kostar pengar
 
 ## Version 2: extraträning och småköp
 
@@ -79,20 +79,20 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 **Webbapp först, native-app sedan, med samma kod.** Appen byggs med **Expo (React Native) och TypeScript**, som kan byggas både som webbapp och som riktiga appar för iPhone och Android. Webbappen kommer ut snabbare, och native-appen blir sedan ett bygge av samma kod, inte en omskrivning.
 
 ### Fas 1: webbapp som kan installeras (PWA)
-- Webbappen publiceras på en egen adress, till exempel `app.starkmamma.com` via Vercel. Deltagarna får länken via sms, e-post och Facebook
+- Webbappen publiceras på en egen adress, till exempel `app.starkmamma.com` via Vercel. Deltagarna får länken via e-post och Facebook
 - **Installation:** deltagaren lägger appen på hemskärmen och får då egen ikon och helskärmsläge
 - **Pushnotiser (Web Push)** via service worker (`public/sw.js`) och VAPID-nycklar (`src/webpush.ts`). Det fungerar på Android och dator, och på iPhone med iOS 16.4 eller senare **om appen ligger på hemskärmen**. Appen visar hur man installerar den på iPhone
-- Sms och e-post fungerar som reserv för den som inte installerat appen eller har stängt av notiser
+- E-post fungerar som reserv för den som inte installerat appen eller har stängt av notiser
 
 ### Fas 2: native-appar i App Store och Google Play (krav)
 - Samma kod byggs med **EAS Build** och publiceras med **EAS Submit**. EAS Update gör att rättningar kan skickas ut utan ny granskning i App Store
-- Pushnotiserna går då via `expo-notifications` (`src/push.ts`), alltså genom Apple (APNs) och Google (FCM). Backend skickar till den kanal varje deltagare har: native-push, Web Push eller sms
+- Pushnotiserna går då via `expo-notifications` (`src/push.ts`), alltså genom Apple (APNs) och Google (FCM). Backend skickar till den kanal varje deltagare har: native-push, Web Push eller e-post
 - **Konton som krävs:** Apple Developer (99 USD per år) och Google Play Console (25 USD en gång), helst i StarkMammas namn
 - **Native-appen är bekräftad som krav**, eftersom pushnotiser är huvudskälet till appen. Webbappen är ett steg på vägen för att testa flödena snabbt, inte slutmålet
 - Kod som bara fungerar i webbläsaren ska undvikas i de delade skärmarna, och notislogiken i backend byggs från början för native-push via Expo Push API, med Web Push som tillägg
 
 ### Gemensamt
-- **Backend: Neon Postgres och Vercel**, samma upplägg som padelappen (RankedInKids). Databasen är Neon-projektet `starkmamma` i Frankfurt (EU), och API:et körs som serverless-funktioner på Vercel (`/api`). Där finns inloggning med engångskod via sms eller e-post, utskick av push via Expo Push API och Web Push, och schemalagda jobb som "dagen innan"-notisen och betalningspåminnelser. Schemat finns i `db/migrations/`
+- **Backend: Neon Postgres och Vercel**, samma upplägg som padelappen (RankedInKids). Databasen är Neon-projektet `starkmamma` i Frankfurt (EU), och API:et körs som serverless-funktioner på Vercel (`/api`). Där finns inloggning med engångskod via e-post eller med Google och Facebook, utskick av push via Expo Push API och Web Push, och schemalagda jobb som "dagen innan"-notisen och betalningspåminnelser. Schemat finns i `db/migrations/`
 - **Swish:** först Swish-länkar med ifyllt belopp och meddelande och manuell markering av betalningar. Senare Swish Handel för automatisk avstämning
 - **Regler i webbappen:** kod som bara fungerar i native-appen eller bara i webbläsaren hålls i egna filer, till exempel `push.ts` och `webpush.ts`, så att konverteringen förblir smärtfri
 
@@ -132,9 +132,15 @@ Det svåraste i början är **anmälningsrusningen**, som kräver att flera samt
 5. **Hela omgången i appen** från nästa omgångsstart
 6. **Native-appar** i App Store och Google Play från samma kod, och därefter version 2 och 3 efter behov
 
+## Kostnader
+
+- **Inga sms.** Inloggningen sker med e-post och kod, eller med Google och Facebook, och reservkanalen för notiser är e-post. Båda är gratis
+- **Gratis att börja med:** Neon och Vercel (gratisnivåerna räcker för den här storleken), Resend för e-post (gratis upp till 3 000 mejl i månaden) och pushnotiser via Expo, Apple och Google
+- **Det som kostar:** Apple Developer (99 USD per år) och Google Play (25 USD en gång) när native-appen ska ut i butikerna
+
 ## Risker
 
-- **Ovana användare:** appen måste vara extremt enkel och fungera för den som bara använder e-post eller sms
+- **Ovana användare:** appen måste vara extremt enkel och fungera för den som bara använder e-post
 - **Nya rutiner för tränaren:** inför appen gradvis, och behåll Facebook för det sociala
 - **Betalningar:** manuell markering först. Automatisk avstämning kräver Swish Handel
 - **GDPR:** hälsoanteckningar är känsliga personuppgifter, så de ska vara frivilliga och kräva samtycke. Uppgifterna ska lagras inom EU, och Neon-databasen ligger i Frankfurt

@@ -1,7 +1,7 @@
 // GET  /api/notices -> skickade notiser
 // POST /api/notices {title, body, audience, page?: {heading, text, link?}}
 //   audience: 'all' | 'group:<uuid>'
-// Notisen sparas med en mottagarlista. Själva leveransen (Expo Push / Web Push / sms)
+// Notisen sparas med en mottagarlista. Själva leveransen (Expo Push / Web Push, e-post som reserv)
 // kopplas på när deltagarappen registrerar push-token; tills dess står den som "väntar".
 import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';

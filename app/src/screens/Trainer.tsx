@@ -342,7 +342,7 @@ export function PushScreen() {
   return (
     <View>
       <H1>Skicka notis</H1>
-      <P muted style={{ marginBottom: 12 }}>Når alla direkt på mobilen, även de som inte är på Facebook. E-post och sms används som reserv.</P>
+      <P muted style={{ marginBottom: 12 }}>Når alla direkt på mobilen, även de som inte är på Facebook. E-post används som reserv.</P>
 
       <H2>Mottagare</H2>
       <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>

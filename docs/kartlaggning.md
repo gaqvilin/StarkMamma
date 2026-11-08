@@ -138,5 +138,5 @@ Ordinarie pass för v 45–51, totalt 10 grupper per vecka:
 - Ska appen ersätta hemsidan, eller ska hemsidan länka till appen för schema och anmälan?
 - Vilka andra event och utmaningar finns under året, till exempel vårbingo eller sommarevent?
 - Finns 5-gångerskort och presentkort till försäljning, eller bara som vinster?
-- Vilka ska få sms om lediga platser i sista minuten: alla, de som står i kö, eller de som anmält att de vill ha sådana notiser?
+- Vilka ska få en notis om lediga platser i sista minuten: alla, de som står i kö, eller de som anmält att de vill ha sådana notiser?
 - Hur lägger hon ICIW-beställningen, och hur hanteras returer?
