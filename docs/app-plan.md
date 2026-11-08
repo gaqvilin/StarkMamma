@@ -17,7 +17,12 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 
 **Omgångar och anmälan**
 - Tränaren skapar en omgång med veckor, grupper (dag, tid, lokal, antal platser), priser för 1, 2 och 3 gånger i veckan, sista betalningsdag och undantag, till exempel "v 47: tors och fre flyttas till ons"
-- Deltagaren anmäler sig, väljer grupper och betalningsplan (hela beloppet eller delbetalning) och ser vad hen ska betala
+- **Anmälningsfönster med förtur:** först får nuvarande deltagare anmäla sig, och vid en angiven tidpunkt öppnar anmälan automatiskt för nya. Nya deltagare kan registrera sig i förväg och få en notis när anmälan öppnar
+- **Anmälan:** deltagaren väljer hur många gånger i veckan hen vill träna, rangordnar sina val (första och andra hand), kan anmäla sig tillsammans med en kompis och väljer betalningsplan. Delbetalning finns bara för 2 och 3 gånger i veckan
+- **Rättvis hantering av trycket:** varje anmälan får en exakt tidsstämpel på servern och sparas säkert även om hundra personer anmäler sig samtidigt. Deltagaren ser direkt om förstahandsvalet har plats eller om hen hamnat på väntelista
+- **Tränaren fördelar och bekräftar:** appen ger ett förslag på fördelning utifrån tid, val och kompispar. Tränaren justerar och bekräftar alla på en gång, och varje deltagare får en bekräftelse med betalningsinfo
+- **Minimiantal:** grupper med färre än 14 anmälda markeras, så att tränaren kan stryka eller slå ihop dem och erbjuda de anmälda ett andrahandsval
+- Därefter ser deltagaren vad hen ska betala och när
 
 **Mitt schema**
 - Deltagaren ser sina kommande pass med lokal och eventuella ändringar
@@ -72,6 +77,8 @@ Omgång            id, namn, startvecka, slutvecka, sista_betaldag, delbetal_sis
 Prisnivå          omgång, gånger_per_vecka, pris, första_delbetalning
 Grupp             omgång, veckodag, tid, lokal, max_platser, typ (ordinarie/special/fokus)
 Passtillfälle     grupp | null, datum, tid, lokal, status (planerat/flyttat/inställt), typ (ordinarie/extra)
+Anmälan          person, omgång, prisnivå, betalplan, tidsstämpel, kompis, status (väntar/bekräftad/väntelista)
+Anmälningsval    anmälan, grupp, rang (1, 2, ...)
 Inskrivning       person, omgång, prisnivå, betalplan
 Gruppmedlemskap   person, grupp
 Bokning           person, passtillfälle, källa (ordinarie/tillgodo/drop-in/klippkort/extra), status (bokad/återbud_i_tid/sent_återbud/närvarande)
@@ -86,7 +93,7 @@ Produkt, Beställning, Beställningsrad, Kylköp   (version 2–3)
 Klippkort används även för 5-gångerskort och presentkort, med typ och antal klipp
 ```
 
-Det svåraste i början är reglerna kring tillgodo-pass, kö och flyttade pass, så det behöver testas ordentligt.
+Det svåraste i början är **anmälningsrusningen**, som kräver att flera samtidiga anmälningar inte kan ge dubbelbokningar och att fördelningen blir rättvis, och därefter reglerna kring tillgodo-pass, kö och flyttade pass, så det behöver testas ordentligt.
 
 ## Arbetsordning
 

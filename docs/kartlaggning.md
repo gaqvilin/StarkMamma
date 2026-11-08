@@ -18,6 +18,14 @@ Underlag för appen, sammanställt från Facebook-inlägg och infobladet "Info i
 - **Betalning:** via Swish eller bankgiro/konto med namnet som meddelande, senast en angiven dag före start (27/10)
 - **Delbetalning** är möjlig efter överenskommelse: 699 kr före den första sista dagen och resten senast cirka en månad senare (27/11)
 - **Kvitton** skrivs ut och läggs i pärmar i väntrummet, sorterade på förnamn
+- **Anmälan till ny omgång** sker i ett Facebook-inlägg som publiceras cirka 5 veckor före start (30/9 inför v 45):
+  - Schemat är **preliminärt**. Tors 17.30 hålls till exempel i Ladan de första veckorna, beroende på väder
+  - Man kommenterar vilka dagar och tider man vill träna, gärna med ett **andrahandsval** om förstahandsvalet blir fullt. Man kan också anmäla en kompis, till exempel "Jag och @Mia önskar tisdagar 18.45 i första hand"
+  - **Inget är klart förrän tränaren bekräftat platsen**
+  - **Nuvarande deltagare har förtur** fram till ett angivet datum, i exemplet bara ett dygn (1/10). Därefter släpps lediga platser till nya deltagare, och man uppmanas tagga vänner
+  - **Minst 14 bokade krävs** för att en grupp ska bli av, annars kan gruppen strykas eller ändras
+  - Delbetalning gäller bara för 2 och 3 gånger i veckan och måste anmälas i förväg
+  - **Det blir ett enormt tryck när anmälan öppnar.** Inlägget fick 121 kommentarer, och det gäller att vara först. Tränaren måste sedan gå igenom alla kommentarer i tidsordning, fördela platser utifrån första- och andrahandsval, ta hänsyn till kompispar och bekräfta varje person. Det är förmodligen den största manuella arbetsinsatsen i hela omgången
 - **Info om omgången** kommer som PDF cirka en månad före start, och en påminnelse om betalning postas dagen före sista betalningsdag
 
 ## 3. Schema och grupper
@@ -87,6 +95,7 @@ Ordinarie pass för v 45–51, totalt 10 grupper per vecka:
 
 ## 9. Var tiden försvinner i dag
 
+0. **Anmälan till ny omgång:** över 100 kommentarer som ska fördelas i grupper, bekräftas och följas upp med betalning
 1. **Byten och återbud:** matcha kommentarer från flera inlägg och sms mot schemat, hålla koll på tillgodo-pass och reservlistor, och uppdatera listor för hand
 2. **Betalningar:** stämma av omgångar, delbetalningar, extrapass, 10-kort, kylflikar, produkter och gruppbeställningar mot Swish och bank, påminna om betalning och skriva ut kvitton
 3. **Fylla platser i sista minuten:** ett inlägg som få ser i tid
@@ -95,9 +104,10 @@ Ordinarie pass för v 45–51, totalt 10 grupper per vecka:
 
 ## 10. Öppna frågor till tränaren
 
-- Hur många platser har varje grupp? Skiljer det sig mellan Gymmet och Ladan?
+- Hur många platser har varje grupp, alltså maxantalet? Minimiantalet är 14. Skiljer det sig mellan Gymmet och Ladan?
+- Anmälan: vill hon behålla principen "först till kvarn", eller vore en annan modell rättvisare och mindre stressig? Till exempel att nuvarande deltagare automatiskt får behålla sin grupp, eller att alla anmälningar som kommer in under ett dygn lottas
+- Hur fördelar hon platser i dag när en grupp blir full: strikt efter tid, eller tar hon hänsyn till andra saker, som kompispar?
 - Reservlista: får den som står först platsen automatiskt, eller den som svarar först?
-- Får deltagare som redan går behålla sin plats till nästa omgång? Hur går anmälan till en ny omgång till?
 - Hur många behöver anmäla sig för att ett extrapass ska bli av? Vilka special- och fokuspass finns?
 - Hur många deltagare finns totalt, och hur många av dem är inte på Facebook?
 - Använder hon Swish Företag eller Swish Handel? Det avgör om betalningar kan stämmas av automatiskt
