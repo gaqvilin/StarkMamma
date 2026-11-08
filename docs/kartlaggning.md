@@ -68,9 +68,18 @@ Ibland öppnas en gruppbeställning från klädmärket ICIW (icaniwill.se).
 - **Deltagaren hämtar och betalar** direkt till StarkMamma när varorna kommit, alltså betalning i efterhand
 - Det manuella arbetet består i att tolka skärmdumpar, föra över dem till en beställning, räkna ut rabatterat pris per person, följa upp vem som hämtat och vem som betalat, och kanske hantera returer
 
-## 6. Vad det säger om verksamheten
+## 6. Omgångar: info och betalning
 
-- **Omgångar:** träningen säljs i perioder om flera veckor **(antagande: deltagaren köper en omgång)**
+Gruppen heter **"Crosstraining i StarkMamma-gymmet & Ladan!"**, och träningsformen är crosstraining (CT).
+- Träningen säljs i **CT-omgångar**. Nästa omgång är **v 45–51 2026**, alltså 7 veckor fram till jul
+- Ungefär en månad före start, den 4/10, postas ett **infoblad som PDF** ("Info inför CT-omgång v 45–51 2026.pdf")
+- Det finns en **sista betalningsdag** innan omgången börjar (tis 27/10, en knapp vecka före start)
+- Dagen innan postas en **påminnelse** som tackar alla för att de "hjälper mig att se till att detta blir gjort". Att följa upp betalningar är alltså en känd huvudvärk
+- 12 gillningar, vilket troligen betyder "jag har betalat" eller "jag har sett det" **(antagande)**
+
+## 7. Vad det säger om verksamheten
+
+- **Omgångar:** crosstraining säljs i omgångar om cirka 7 veckor (till exempel v 45–51) som betalas i förskott före en sista dag
 - **Ordinarie pass:** varje deltagare har en fast tid per vecka **(antagande)**
 - **Två lokaler:** "Gymmet" och "Ladan"
 - **Begränsat antal platser per pass**, och när en plats lämnas kan någon annan ta den
@@ -81,8 +90,9 @@ Ibland öppnas en gruppbeställning från klädmärket ICIW (icaniwill.se).
 - **Passtyper:** ordinarie pass och extrapass, där extrapassen kräver tillräckligt intresse
 - Det manuella arbetet ligger i att läsa kommentarer, uppdatera vilka platser som är lediga, flytta folk från reservlistan och komma ihåg tillgodo-pass
 
-## 7. Vad appen behöver göra (första utkast)
+## 8. Vad appen behöver göra (första utkast)
 
+0. **Omgångsanmälan:** tränaren publicerar en ny omgång med info, priser och sista betalningsdag. Deltagaren anmäler sig, väljer ordinarie pass och betalar, får automatiska påminnelser om hen inte betalat, och tränaren ser vem som betalat
 1. **Schema per omgång:** pass med dag, tid, lokal och max antal platser
 2. **Ordinarie plats:** varje deltagare kopplas till sitt fasta pass i omgången
 3. **Lämna återbud** med ett klick, där appen själv vet datum och tid och platsen blir ledig direkt
@@ -97,9 +107,10 @@ Ibland öppnas en gruppbeställning från klädmärket ICIW (icaniwill.se).
 12. **Betalningar:** samla omgång, klippkort, drop-in och produkter, med Swish-integration eller åtminstone markeringen "betald", så att avstämningen sker automatiskt
 13. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
 
-## 8. Öppna frågor till tränaren
+## 9. Öppna frågor till tränaren
 
-- Hur långa är omgångarna, och vad kostar en omgång? Hur tas betalt?
+- **Infobladet (PDF) för CT-omgång v 45–51** är det viktigaste underlaget, eftersom det troligen innehåller priser, regler, betalningssätt och passval
+- Får deltagare som redan går behålla sin ordinarie tid till nästa omgång, och i så fall hur länge?
 - Har alla exakt ett ordinarie pass per vecka, eller finns det 2x/vecka-kort?
 - Vad betyder "i god tid" exakt? Är det 24 timmar innan, dagen innan eller något annat?
 - Hur många platser finns per pass? Skiljer det sig mellan Gymmet och Ladan?
