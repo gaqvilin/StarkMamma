@@ -17,6 +17,11 @@ Gemenskapen behöver **inte** flyttas i första versionen. Facebook-gruppen kan 
 
 StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, graviditetsträning, online-träning, individuell träning, kostrådgivning och hinderbana. **Version 1 byggs för crosstraining**, men datamodellen görs så att en omgång alltid hör till en **träningsform**. Mammaträning, som också går i omgångar, kan då läggas till nästan gratis.
 
+## Två delar
+
+- **Admin för Emma** (`admin/`) är en webbapp för datorn med översikt över veckan, deltagare, omgång och notiser. Den byggs först, eftersom den ger Emma nytta direkt och fyller databasen med riktiga grupper och deltagare
+- **Deltagarappen** (`app/`) är en native-app för iPhone och Android med pushnotiser
+
 ## Version 1: ersätta veckans manuella arbete
 
 **Omgångar och anmälan**
