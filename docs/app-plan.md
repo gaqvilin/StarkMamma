@@ -78,11 +78,12 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 - **Pushnotiser (Web Push)** via service worker (`public/sw.js`) och VAPID-nycklar (`src/webpush.ts`). Det fungerar på Android och dator, och på iPhone med iOS 16.4 eller senare **om appen ligger på hemskärmen**. Appen visar hur man installerar den på iPhone
 - Sms och e-post fungerar som reserv för den som inte installerat appen eller har stängt av notiser
 
-### Fas 2: native-appar i App Store och Google Play
+### Fas 2: native-appar i App Store och Google Play (krav)
 - Samma kod byggs med **EAS Build** och publiceras med **EAS Submit**. EAS Update gör att rättningar kan skickas ut utan ny granskning i App Store
 - Pushnotiserna går då via `expo-notifications` (`src/push.ts`), alltså genom Apple (APNs) och Google (FCM). Backend skickar till den kanal varje deltagare har: native-push, Web Push eller sms
 - **Konton som krävs:** Apple Developer (99 USD per år) och Google Play Console (25 USD en gång), helst i StarkMammas namn
-- Byt till native när webbappen fungerar i vardagen, eller tidigare om notiserna på iPhone visar sig vara för krångliga att få igång
+- **Native-appen är bekräftad som krav**, eftersom pushnotiser är huvudskälet till appen. Webbappen är ett steg på vägen för att testa flödena snabbt, inte slutmålet
+- Kod som bara fungerar i webbläsaren ska undvikas i de delade skärmarna, och notislogiken i backend byggs från början för native-push via Expo Push API, med Web Push som tillägg
 
 ### Gemensamt
 - **Backend: Supabase.** Postgres, inloggning med engångskod via sms eller e-post, radbaserade behörigheter och Edge Functions för push, påminnelser och schemalagda jobb, till exempel "dagen innan"-notisen. Datat lagras i EU (Stockholm)
