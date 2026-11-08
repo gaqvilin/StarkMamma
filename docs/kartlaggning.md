@@ -31,16 +31,35 @@ Varje helg postar tränaren ett inlägg i Facebook-gruppen där deltagarna komme
 
 Ett exempelinlägg fick 18 kommentarer, som tränaren matchar ihop för hand.
 
-## 2. Vad det säger om verksamheten
+## 2. Extrapass med intresseomröstning
+
+Ibland erbjuds extrapass, till exempel "SöndagsFYS" sön 8/11 kl 17.00.
+- Deltagarna **röstar fram** passet genom att kommentera, och de uppmanas tagga vänner som kan vara intresserade
+- Passet blir av om **tillräckligt många** är intresserade **(antagande: det finns en minimigräns)**
+- **Pris: 140 kr per gång eller ett klipp på 10-kort.** Det finns alltså klippkort och drop-in vid sidan av omgångarna
+
+## 3. Påminnelse inför varje pass (dagen innan)
+
+Inför varje pass postas ett inlägg, till exempel "Imorgon FRE 6/11 kl 06.15 i Gymmet".
+- **Praktisk info:** bara rena inomhusskor i gymmet, ta med handduk och vattenflaska
+- **Bokade:** en lista med alla deltagare som taggas, i exemplet 11 personer
+  - Listan är uppdelad i grupper med tomrad emellan **(fråga: ordinarie, inbokade och tillgodo?)**
+- **Gilla** om du kommer och **kommentera** om du inte kommer, vilket fungerar som närvarobekräftelse
+- Återbud kommer alltså in på flera ställen: i helgens uppsamlingsinlägg **och** i varje passinlägg
+- I exemplet lämnade två personer återbud som inte fanns med på listan över bokade. Antingen var listan inte uppdaterad eller så hamnade återbuden i fel inlägg. Det är precis den här typen av fel som appen ska ta bort
+
+## 4. Vad det säger om verksamheten
 
 - **Omgångar:** träningen säljs i perioder om flera veckor **(antagande: deltagaren köper en omgång)**
 - **Ordinarie pass:** varje deltagare har en fast tid per vecka **(antagande)**
 - **Två lokaler:** "Gymmet" och "Ladan"
 - **Begränsat antal platser per pass**, och när en plats lämnas kan någon annan ta den
 - **Tillgodo-pass:** ett uteblivet pass kan bytas mot ett annat om man lämnat återbud i tid, så tränaren måste hålla koll på ett saldo per person
+- **Betalformer:** omgång, 10-kort och drop-in för 140 kr
+- **Passtyper:** ordinarie pass och extrapass, där extrapassen kräver tillräckligt intresse
 - Det manuella arbetet ligger i att läsa kommentarer, uppdatera vilka platser som är lediga, flytta folk från reservlistan och komma ihåg tillgodo-pass
 
-## 3. Vad appen behöver göra (första utkast)
+## 5. Vad appen behöver göra (första utkast)
 
 1. **Schema per omgång:** pass med dag, tid, lokal och max antal platser
 2. **Ordinarie plats:** varje deltagare kopplas till sitt fasta pass i omgången
@@ -48,9 +67,12 @@ Ett exempelinlägg fick 18 kommentarer, som tränaren matchar ihop för hand.
 4. **Tillgodo-regler:** återbud före en gräns, till exempel dagen innan, ger ett tillgodo-pass och senare återbud ger inget
 5. **Boka ledig plats** med tillgodo-pass, och se lediga platser i realtid i stället för en lista som tränaren skriver
 6. **Reservlista** per pass, med notis när en plats blir ledig och möjlighet att bli flyttad in automatiskt eller ta platsen med ett klick
-7. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
+7. **Påminnelse dagen innan** via pushnotis, med praktisk info och knapparna "Jag kommer" och "Jag kommer inte" (återbud enligt samma regler som ovan)
+8. **Extrapass:** tränaren föreslår ett pass, deltagare anmäler intresse, passet bekräftas när minimigränsen nås och betalas med klipp eller 140 kr
+9. **Klippkort:** saldo per deltagare som dras automatiskt vid bokning
+10. **Tränarvy:** vem som kommer på varje pass, saldo per deltagare och eventuella manuella justeringar
 
-## 4. Öppna frågor till tränaren
+## 6. Öppna frågor till tränaren
 
 - Hur långa är omgångarna, och vad kostar en omgång? Hur tas betalt?
 - Har alla exakt ett ordinarie pass per vecka, eller finns det 2x/vecka-kort?
@@ -58,4 +80,8 @@ Ett exempelinlägg fick 18 kommentarer, som tränaren matchar ihop för hand.
 - Hur många platser finns per pass? Skiljer det sig mellan Gymmet och Ladan?
 - Kan tillgodo-pass sparas till nästa omgång, eller förfaller de?
 - Reservlista: får den som står först platsen automatiskt, eller den som svarar först?
+- Hur många klipp har ett 10-kort, vad kostar det, och har det ett sista giltighetsdatum?
+- Hur många behövs för att ett extrapass ska bli av? Får man fortfarande boka extrapass om omgången är full?
+- Vad betyder grupperna i listan över bokade?
+- Hur betalas 140 kr i dag, till exempel med Swish?
 - Vad mer sker i gruppen, till exempel peppning, info och träningstips, som ska finnas kvar?
