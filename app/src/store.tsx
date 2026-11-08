@@ -116,7 +116,7 @@ function reducer(s: State, a: Action): State {
       return { ...s, attending: { ...s.attending, [a.occ.id]: true } };
     case 'push': {
       const n = notice(a.title, a.body);
-      return { ...s, inbox: [n, ...s.inbox], banner: n };
+      return { ...s, inbox: [n, ...s.inbox], banner: n, toast: { title: 'Notisen är skickad', body: a.title } };
     }
     case 'dismissBanner':
       return { ...s, banner: null };
@@ -136,7 +136,7 @@ function reducer(s: State, a: Action): State {
         a.decisions[r.id] ? { ...r, status: a.decisions[r.id] } : r,
       );
       const n = notice(
-        'Din plats är bekräftad! 🎉',
+        'Din plats är bekräftad',
         'Välkommen till CT-omgång v 2–8 2027. Betala senast 22/12 – tryck här för att Swisha.',
       );
       return { ...s, registrations, inbox: [n, ...s.inbox], banner: n };

@@ -62,7 +62,7 @@ export function RosterScreen() {
         <Row style={{ marginTop: 14, flexWrap: 'wrap' }}>
           <Button small title="Påminn de som inte svarat" onPress={() => s.dispatch({ type: 'push', title: `Kommer du ${dateLabel(occ.date).toLowerCase()} ${occ.time}?`, body: `Svara "Jag kommer" eller lämna återbud i appen. ${occ.place === 'Gymmet' ? 'Rena inomhusskor!' : 'Klä dig varmt – vi kör i Ladan.'}` })} />
           {freed > 0 && (
-            <Button small variant="secondary" title={`Erbjud ${freed} plats till kön`} onPress={() => s.dispatch({ type: 'push', title: `Ledig plats ${occ.time} idag! ⚡`, body: `Det finns ${freed} ledig plats på ${occ.place} ${occ.time}. Först att trycka "Boka" får platsen.` })} />
+            <Button small variant="secondary" title={`Erbjud ${freed} plats till kön`} onPress={() => s.dispatch({ type: 'push', title: `Ledig plats ${occ.time} idag`, body: `Det finns ${freed} ledig plats på ${occ.place} ${occ.time}. Först att trycka "Boka" får platsen.` })} />
           )}
         </Row>
       </Card>
@@ -164,7 +164,7 @@ export function RegistrationsScreen() {
         );
       })}
       <Button
-        title={pending.length ? `Bekräfta ${pending.length} & skicka push` : 'Alla bekräftade ✓'}
+        title={pending.length ? `Bekräfta ${pending.length} & skicka push` : 'Alla är bekräftade'}
         disabled={!pending.length}
         onPress={() => s.dispatch({ type: 'confirmRegistrations', decisions: Object.fromEntries(pending.map((r) => [r.id, plan[r.id].status])) })}
         style={{ marginBottom: 20 }}
@@ -177,9 +177,9 @@ export function RegistrationsScreen() {
 
 const TEMPLATES = [
   { label: 'Ändrad lokal', title: 'Ändrad lokal ikväll', body: 'Torsdag 17.30 kör vi i Gymmet i stället för Ladan pga vädret. Rena inomhusskor!' },
-  { label: 'Extrapass', title: 'SöndagsFYS igen? 🍁', body: 'Extrapass sön 15/11 kl 17.00 om minst 8 anmäler sig. 140 kr eller ett klipp. Tryck för att anmäla intresse!' },
+  { label: 'Extrapass', title: 'SöndagsFYS igen?', body: 'Extrapass sön 15/11 kl 17.00 om minst 8 anmäler sig. 140 kr eller ett klipp. Tryck för att anmäla intresse!' },
   { label: 'Uppsamling', title: 'Lediga platser kommande vecka', body: 'Det finns lediga platser mån 12.00, tis 06.15 och fre 06.15. Boka med ditt tillgodo-pass i appen!' },
-  { label: 'Anmälan öppen', title: '🔥 Anmälan öppen – CT v 2–8 2027', body: 'Förtur för dig som tränar nu fram till tis 10/11 kl 20.00. Anmäl dig i appen!' },
+  { label: 'Anmälan öppen', title: 'Anmälan öppen – CT v 2–8 2027', body: 'Förtur för dig som tränar nu fram till tis 10/11 kl 20.00. Anmäl dig i appen!' },
 ];
 
 export function PushScreen() {
@@ -217,7 +217,6 @@ export function PushScreen() {
         disabled={!title || !body}
         onPress={() => { s.dispatch({ type: 'push', title, body }); setTitle(''); setBody(''); }}
       />
-      <P muted style={{ marginTop: 10 }}>Tips: byt till "Deltagare" uppe till höger för att se notisen i deltagarens inkorg.</P>
     </View>
   );
 }
@@ -246,7 +245,7 @@ export function TrainerPayScreen() {
         variant="secondary"
         title={`Påminn ${unpaid.length} som inte betalat`}
         disabled={!unpaid.length}
-        onPress={() => s.dispatch({ type: 'push', title: 'Påminnelse om betalning', body: 'Du har en obetald avgift hos StarkMamma. Tryck för att betala direkt med Swish 😊' })}
+        onPress={() => s.dispatch({ type: 'push', title: 'Påminnelse om betalning', body: 'Du har en obetald avgift hos StarkMamma. Tryck för att betala direkt med Swish.' })}
         style={{ marginBottom: 14 }}
       />
       {s.payments.map((p) => (
@@ -256,7 +255,7 @@ export function TrainerPayScreen() {
               <Text style={{ fontWeight: '700' }}>{p.name}</Text>
               <P muted>{p.what} · {p.amount} kr · {p.due}</P>
             </View>
-            <Chip label={p.paid ? '✓ Betald' : 'Markera betald'} active={p.paid} onPress={() => s.dispatch({ type: 'togglePaid', id: p.id })} />
+            <Chip label={p.paid ? 'Betald' : 'Markera betald'} active={p.paid} onPress={() => s.dispatch({ type: 'togglePaid', id: p.id })} />
           </Row>
         </Card>
       ))}

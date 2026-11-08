@@ -44,7 +44,7 @@ export function HomeScreen() {
 
   return (
     <View>
-      <H1>Hej {ME.name.split(' ')[0]}! 💪</H1>
+      <H1>Hej {ME.name.split(' ')[0]}!</H1>
       <P muted style={{ marginBottom: 14 }}>CT-omgång v 45–51 · vecka {upcoming[0]?.week ?? 51}</P>
 
       <Row style={{ marginBottom: 14, flexWrap: 'wrap' }}>
@@ -67,7 +67,7 @@ export function HomeScreen() {
           </Row>
           <P muted style={{ marginBottom: 12 }}>{placeInfo(next)}</P>
           {s.attending[next.id] ? (
-            <Pill tone="ok" text="✓ Du har svarat att du kommer" />
+            <Pill tone="ok" text="Du har svarat att du kommer" />
           ) : (
             <Row>
               <Button title="Jag kommer" onPress={() => s.dispatch({ type: 'attend', occ: next })} style={{ flex: 1 }} />
@@ -92,7 +92,7 @@ function PushPrompt() {
   if (hidden || Platform.OS !== 'web' || support === 'unsupported' || support === 'subscribed') return null;
   return (
     <Card style={{ backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }}>
-      <H2>Få besked direkt i mobilen 🔔</H2>
+      <H2>Få besked direkt i mobilen</H2>
       {support === 'needs-install' ? (
         <P>På iPhone: tryck på Dela-knappen i Safari och välj "Lägg till på hemskärmen". Öppna sedan StarkMamma därifrån och slå på notiser.</P>
       ) : support === 'denied' ? (
@@ -272,7 +272,7 @@ export function SignupScreen() {
     <View>
       <H1>Anmälan</H1>
       <Card style={{ backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }}>
-        <H2>CT-omgång v 2–8 2027 🔥</H2>
+        <H2>CT-omgång v 2–8 2027</H2>
         <P>Förtur för dig som tränar nu – öppen till tis 10/11 kl 20.00. Därefter släpps lediga platser till nya.</P>
         <P muted style={{ marginTop: 6 }}>Minst 14 anmälda krävs för att en grupp ska köras. Inget är klart förrän Emma bekräftat.</P>
       </Card>

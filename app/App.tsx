@@ -9,19 +9,19 @@ import { colors } from './src/theme';
 
 type Role = 'deltagare' | 'tränare';
 
-const TABS: Record<Role, { key: string; label: string; icon: string; Screen: React.ComponentType }[]> = {
+const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentType }[]> = {
   deltagare: [
-    { key: 'home', label: 'Hem', icon: '🏠', Screen: HomeScreen },
-    { key: 'book', label: 'Boka', icon: '📅', Screen: BookScreen },
-    { key: 'signup', label: 'Anmälan', icon: '🔥', Screen: SignupScreen },
-    { key: 'pay', label: 'Betala', icon: '💳', Screen: PayScreen },
-    { key: 'inbox', label: 'Notiser', icon: '🔔', Screen: InboxScreen },
+    { key: 'home', label: 'Hem', Screen: HomeScreen },
+    { key: 'book', label: 'Boka', Screen: BookScreen },
+    { key: 'signup', label: 'Anmälan', Screen: SignupScreen },
+    { key: 'pay', label: 'Betala', Screen: PayScreen },
+    { key: 'inbox', label: 'Notiser', Screen: InboxScreen },
   ],
   tränare: [
-    { key: 'roster', label: 'Pass', icon: '🏋️', Screen: RosterScreen },
-    { key: 'regs', label: 'Anmälningar', icon: '📝', Screen: RegistrationsScreen },
-    { key: 'push', label: 'Skicka', icon: '📣', Screen: PushScreen },
-    { key: 'tpay', label: 'Betalningar', icon: '💰', Screen: TrainerPayScreen },
+    { key: 'roster', label: 'Pass', Screen: RosterScreen },
+    { key: 'regs', label: 'Anmälningar', Screen: RegistrationsScreen },
+    { key: 'push', label: 'Skicka', Screen: PushScreen },
+    { key: 'tpay', label: 'Betalningar', Screen: TrainerPayScreen },
   ],
 };
 
@@ -63,8 +63,19 @@ function Toast() {
   );
 }
 
+// Det finns bara en tränare: Emma. I den riktiga appen avgörs vyn av vem som är inloggad.
+// I prototypen öppnas Emmas vy genom att lägga till #emma i adressen.
+const roleFromHash = (): Role =>
+  typeof window !== 'undefined' && window.location?.hash === '#emma' ? 'tränare' : 'deltagare';
+
 function Shell() {
-  const [role, setRole] = useState<Role>('deltagare');
+  const [role, setRole] = useState<Role>(roleFromHash);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.addEventListener) return;
+    const onHash = () => setRole(roleFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [tab, setTab] = useState<Record<Role, string>>({ deltagare: 'home', tränare: 'roster' });
   const tabs = TABS[role];
   const current = tabs.find((t) => t.key === tab[role]) ?? tabs[0];
@@ -86,13 +97,7 @@ function Shell() {
           <Text style={styles.logoStark}>STARK</Text>
           <Text style={styles.logoMamma}>mamma</Text>
         </View>
-        <View style={styles.roleSwitch}>
-          {(['deltagare', 'tränare'] as Role[]).map((r) => (
-            <Pressable key={r} onPress={() => go(r, tab[r])} style={[styles.roleBtn, role === r && styles.roleBtnActive]}>
-              <Text style={[styles.roleText, role === r && { color: '#fff' }]}>{r === 'deltagare' ? 'Deltagare' : 'Tränare'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {role === 'tränare' ? <Text style={styles.adminLabel}>Emma</Text> : null}
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
@@ -105,7 +110,7 @@ function Shell() {
             const active = t.key === current.key;
             return (
               <Pressable key={t.key} onPress={() => go(role, t.key)} style={styles.tab}>
-                <Text style={{ fontSize: 20, opacity: active ? 1 : 0.5 }}>{t.icon}</Text>
+                <View style={[styles.tabIndicator, active && { backgroundColor: colors.ink }]} />
                 <Text style={[styles.tabLabel, active && { color: colors.ink, fontWeight: '800' }]}>{t.label}</Text>
                 {t.key === 'inbox' && inbox.length > 1 ? <View style={styles.dot} /> : null}
               </Pressable>
@@ -115,7 +120,7 @@ function Shell() {
       </SafeAreaView>
 
       <Toast />
-      <PushBanner onOpen={() => go('deltagare', 'inbox')} />
+      {role === 'deltagare' ? <PushBanner onOpen={() => go('deltagare', 'inbox')} /> : null}
     </SafeAreaView>
   );
 }
@@ -145,15 +150,13 @@ const styles = StyleSheet.create({
   logo: { backgroundColor: colors.brand, paddingHorizontal: 10, paddingVertical: 3, transform: [{ skewX: '-8deg' }] },
   logoStark: { color: '#fff', fontWeight: '900', fontStyle: 'italic', fontSize: 20, letterSpacing: 1, lineHeight: 22 },
   logoMamma: { color: '#fff', fontStyle: 'italic', fontSize: 10, textAlign: 'right', marginTop: -3 },
-  roleSwitch: { flexDirection: 'row', backgroundColor: '#EAE5DF', borderRadius: 999, padding: 3 },
-  roleBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
-  roleBtnActive: { backgroundColor: colors.accent },
-  roleText: { fontSize: 13, fontWeight: '700', color: colors.ink },
+  adminLabel: { fontSize: 14, fontWeight: '700', color: colors.muted },
   content: { padding: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
   tabBar: { borderTopWidth: 1, borderColor: colors.line, backgroundColor: colors.card },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  tabLabel: { fontSize: 11, color: colors.muted, marginTop: 2 },
-  dot: { position: 'absolute', top: 6, right: '30%', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
+  tab: { flex: 1, alignItems: 'center', paddingTop: 0, paddingBottom: 12 },
+  tabIndicator: { height: 3, width: 28, borderRadius: 2, backgroundColor: 'transparent', marginBottom: 10 },
+  tabLabel: { fontSize: 13, color: colors.muted },
+  dot: { position: 'absolute', top: 10, right: '30%', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
   banner: {
     position: 'absolute',
     top: 8,
