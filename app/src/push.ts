@@ -35,3 +35,16 @@ export async function registerForPush(): Promise<string | null> {
   const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
   return data; // ExponentPushToken[...] – skickas till backend och kopplas till deltagaren
 }
+
+/**
+ * Anropas när deltagaren trycker på en notis. Notiser från backend skickas med
+ * `data: { noticeId }`, och appen öppnar då notisens informationssida om den har en,
+ * annars inkorgen. (I webbappen gör service workern samma sak via `data.url`.)
+ */
+export function onNotificationOpened(open: (noticeId: string | undefined) => void) {
+  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data as { noticeId?: string } | undefined;
+    open(data?.noticeId);
+  });
+  return () => sub.remove();
+}

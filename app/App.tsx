@@ -2,9 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { BookScreen, HomeScreen, InboxScreen, PayScreen, SignupScreen } from './src/screens/Participant';
+import { BookScreen, HomeScreen, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
-import { StoreProvider, useStore } from './src/store';
+import { Notice, StoreProvider, useStore } from './src/store';
 import { colors } from './src/theme';
 
 type Role = 'deltagare' | 'tränare';
@@ -25,7 +25,7 @@ const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentTy
   ],
 };
 
-function PushBanner({ onOpen }: { onOpen: () => void }) {
+function PushBanner({ onOpen }: { onOpen: (n: Notice) => void }) {
   const { banner, dispatch } = useStore();
   const y = useRef(new Animated.Value(-140)).current;
   useEffect(() => {
@@ -38,7 +38,7 @@ function PushBanner({ onOpen }: { onOpen: () => void }) {
   if (!banner) return null;
   return (
     <Animated.View style={[styles.banner, { transform: [{ translateY: y }] }]}>
-      <Pressable onPress={() => { dispatch({ type: 'dismissBanner' }); onOpen(); }}>
+      <Pressable onPress={() => { dispatch({ type: 'dismissBanner' }); onOpen(banner); }}>
         <Text style={styles.bannerApp}>STARKMAMMA · nu</Text>
         <Text style={styles.bannerTitle}>{banner.title}</Text>
         <Text style={styles.bannerBody} numberOfLines={2}>{banner.body}</Text>
@@ -81,11 +81,13 @@ function Shell() {
   const current = tabs.find((t) => t.key === tab[role]) ?? tabs[0];
   const { Screen } = current;
   const scroll = useRef<ScrollViewInstance>(null);
-  const { inbox } = useStore();
+  const { inbox, openNotice, dispatch } = useStore();
+  const showInfo = role === 'deltagare' && !!openNotice;
 
   const go = (r: Role, k: string) => {
     setRole(r);
     setTab((t) => ({ ...t, [r]: k }));
+    if (openNotice) dispatch({ type: 'closeNotice' });
     scroll.current?.scrollTo({ y: 0, animated: false });
   };
 
@@ -101,7 +103,7 @@ function Shell() {
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
-        <Screen />
+        {showInfo ? <InfoPageScreen /> : <Screen />}
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.tabBar}>
@@ -120,7 +122,14 @@ function Shell() {
       </SafeAreaView>
 
       <Toast />
-      {role === 'deltagare' ? <PushBanner onOpen={() => go('deltagare', 'inbox')} /> : null}
+      {role === 'deltagare' ? <PushBanner
+          onOpen={(n) => {
+            if (n.page) {
+              dispatch({ type: 'openNotice', id: n.id });
+              scroll.current?.scrollTo({ y: 0, animated: false });
+            } else go('deltagare', 'inbox');
+          }}
+        /> : null}
     </SafeAreaView>
   );
 }

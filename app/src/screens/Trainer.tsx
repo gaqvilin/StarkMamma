@@ -288,24 +288,61 @@ export function RegistrationsScreen() {
 
 // ------------------------------------------------------------------ Push
 
-const TEMPLATES = [
+type Template = { label: string; title: string; body: string; page?: { heading: string; text: string; link?: string } };
+
+const TEMPLATES: Template[] = [
   { label: 'Ändrad lokal', title: 'Ändrad lokal ikväll', body: 'Torsdag 17.30 kör vi i Gymmet i stället för Ladan pga vädret. Rena inomhusskor!' },
   { label: 'Extrapass', title: 'SöndagsFYS igen?', body: 'Extrapass sön 15/11 kl 17.00 om minst 8 anmäler sig. 140 kr eller ett klipp. Tryck för att anmäla intresse!' },
   { label: 'Uppsamling', title: 'Lediga platser kommande vecka', body: 'Det finns lediga platser mån 12.00, tis 06.15 och fre 06.15. Boka med ditt tillgodo-pass i appen!' },
   { label: 'Anmälan öppen', title: 'Anmälan öppen – CT v 2–8 2027', body: 'Förtur för dig som tränar nu fram till tis 10/11 kl 20.00. Anmäl dig i appen!' },
+  {
+    label: 'Gruppbeställning',
+    title: 'Ny chans att beställa från ICIW',
+    body: '30 % rabatt för StarkMamma. Tryck för att läsa hur du beställer.',
+    page: {
+      heading: 'Gruppbeställning från ICIW',
+      text: 'Höstens färger och material är här, spana till exempel in de superfina fleecen.\n\nSå här beställer du: titta på hemsidan och skicka mig det du vill ha. Jag löser så att kläderna levereras hit, och du hämtar och betalar direkt till StarkMamma.\n\nDu får 30 % rabatt på ordinarie pris och 10 % på rea och outlet.\n\nBeställ senast söndag 1/11 kl 12.00. Hojta om du har frågor!',
+      link: 'https://www.icaniwill.se',
+    },
+  },
+  {
+    label: 'Höstbingo',
+    title: 'HÖST-bingo under uppehållet',
+    body: 'Vinn träningskort och en egen stund med mig. Tryck för att se brickan.',
+    page: {
+      heading: 'StarkMammas HÖST-bingo',
+      text: 'Gäller 17/10 till 1/11, under uppehållet v 43–44.\n\nGör alla aktiviteter på brickan och skriv datum i rutan när du kryssar. Bara ett kryss per aktivitet.\n\nFota din fulla bricka och skicka in den senast 1/11 kl 20.00 för att vara med i utlottningen. Bland vinsterna finns två 5-gångerskort på crosstrainingen och ett presentkort på en egen stund med mig, till exempel för att prata kost eller träningsupplägg.\n\nUtskrivna brickor finns i väntrummet.',
+    },
+  },
 ];
 
 export function PushScreen() {
   const s = useStore();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [withPage, setWithPage] = useState(false);
+  const [heading, setHeading] = useState('');
+  const [text, setText] = useState('');
+  const [link, setLink] = useState('');
   const [aud, setAud] = useState('Alla deltagare');
   const audiences = ['Alla deltagare', 'Tis 18.45', 'Ej betalt', 'Kö-listor', 'Intresseanmälda'];
+
+  const useTemplate = (t: Template) => {
+    setTitle(t.title);
+    setBody(t.body);
+    setWithPage(!!t.page);
+    setHeading(t.page?.heading ?? '');
+    setText(t.page?.text ?? '');
+    setLink(t.page?.link ?? '');
+  };
+  const reset = () => useTemplate({ label: '', title: '', body: '' });
+  const ready = title && body && (!withPage || (heading && text));
+  const input = { borderWidth: 1, borderColor: colors.line, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 } as const;
 
   return (
     <View>
       <H1>Skicka notis</H1>
-      <P muted style={{ marginBottom: 12 }}>Når alla direkt på mobilen – även de som inte är på Facebook (e-post/sms som reserv).</P>
+      <P muted style={{ marginBottom: 12 }}>Når alla direkt på mobilen, även de som inte är på Facebook. E-post och sms används som reserv.</P>
 
       <H2>Mottagare</H2>
       <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>
@@ -317,18 +354,40 @@ export function PushScreen() {
       <H2>Mallar</H2>
       <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>
         {TEMPLATES.map((t) => (
-          <Chip key={t.label} label={t.label} active={title === t.title} onPress={() => { setTitle(t.title); setBody(t.body); }} />
+          <Chip key={t.label} label={t.label} active={title === t.title} onPress={() => useTemplate(t)} />
         ))}
       </Row>
 
       <Card>
         <TextInput placeholder="Rubrik" value={title} onChangeText={setTitle} style={{ fontSize: 17, fontWeight: '700', paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.line }} />
-        <TextInput placeholder="Meddelande" value={body} onChangeText={setBody} multiline style={{ fontSize: 15, minHeight: 90, paddingTop: 10, textAlignVertical: 'top' }} />
+        <TextInput placeholder="Meddelande (syns i notisen)" value={body} onChangeText={setBody} multiline style={{ fontSize: 15, minHeight: 70, paddingTop: 10, textAlignVertical: 'top' }} />
       </Card>
+
+      <Card>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <H2>Informationssida</H2>
+            <P muted>När man trycker på notisen öppnas en sida med mer information. Bra för sådant som inte har en egen plats i appen.</P>
+          </View>
+          <Chip label={withPage ? 'På' : 'Av'} active={withPage} onPress={() => setWithPage(!withPage)} />
+        </Row>
+        {withPage && (
+          <View style={{ marginTop: 12 }}>
+            <TextInput placeholder="Sidans rubrik" value={heading} onChangeText={setHeading} style={[input, { fontWeight: '700' }]} />
+            <TextInput placeholder="Text" value={text} onChangeText={setText} multiline style={[input, { minHeight: 140, textAlignVertical: 'top' }]} />
+            <TextInput placeholder="Länk (valfritt), t.ex. https://..." value={link} onChangeText={setLink} autoCapitalize="none" style={input} />
+          </View>
+        )}
+      </Card>
+
       <Button
         title={`Skicka till ${aud.toLowerCase()}`}
-        disabled={!title || !body}
-        onPress={() => { s.dispatch({ type: 'push', title, body }); setTitle(''); setBody(''); }}
+        disabled={!ready}
+        onPress={() => {
+          s.dispatch({ type: 'push', title, body, page: withPage ? { heading, text, link: link || undefined } : undefined });
+          reset();
+        }}
+        style={{ marginBottom: 20 }}
       />
     </View>
   );

@@ -46,6 +46,7 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 - **Digitalt kvitto** i appen i stället för pärmen, som PDF med de uppgifter som krävs för **friskvårdsbidrag**
 
 **Notiser**
+- **Notis med informationssida:** Emma kan koppla en sida med rubrik, längre text och en länk till en notis, och när deltagaren trycker på notisen öppnas sidan. Det används för sådant som inte har en egen funktion i appen, till exempel event, gruppbeställningar, utmaningar och ändrade rutiner. Sidan finns kvar i inkorgen
 - Pushnotiser för den som installerat appen, annars e-post, och sms för brådskande saker som ändrad lokal eller inställt pass
 
 ## Version 2: extraträning och småköp

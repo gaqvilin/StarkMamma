@@ -14,11 +14,19 @@ import {
 
 export type BookingSource = 'tillgodo' | 'klippkort' | 'drop-in';
 
+/** Informationssida som en notis kan leda till, för sådant som inte har en egen plats i appen. */
+export interface InfoPage {
+  heading: string;
+  text: string;
+  link?: string;
+}
+
 export interface Notice {
   id: string;
   title: string;
   body: string;
   at: Date;
+  page?: InfoPage;
 }
 
 export interface MySignup {
@@ -38,6 +46,7 @@ interface State {
   inbox: Notice[];
   banner: Notice | null;
   toast: { title: string; body: string } | null;
+  openNotice: string | null;
   registrations: Registration[];
   payments: Payment[];
   mySignup: MySignup | null;
@@ -51,7 +60,9 @@ type Action =
   | { type: 'joinWaitlist'; occ: Occurrence }
   | { type: 'leaveWaitlist'; occ: Occurrence }
   | { type: 'attend'; occ: Occurrence }
-  | { type: 'push'; title: string; body: string }
+  | { type: 'push'; title: string; body: string; page?: InfoPage }
+  | { type: 'openNotice'; id: string }
+  | { type: 'closeNotice' }
   | { type: 'dismissBanner' }
   | { type: 'toast'; title: string; body: string }
   | { type: 'dismissToast' }
@@ -60,7 +71,7 @@ type Action =
   | { type: 'togglePaid'; id: string };
 
 let seq = 0;
-const notice = (title: string, body: string): Notice => ({ id: `n${++seq}`, title, body, at: new Date() });
+const notice = (title: string, body: string, page?: InfoPage): Notice => ({ id: `n${++seq}`, title, body, at: new Date(), page });
 
 const initial: State = {
   cancelled: {},
@@ -70,6 +81,17 @@ const initial: State = {
   punchLeft: 7,
   inbox: [
     {
+      id: 'n-advent',
+      title: 'AdventsFYS & AdventsMYS sön 29/11',
+      body: 'Vår årliga tradition är tillbaka. Tryck för att läsa mer och anmäla dig.',
+      at: new Date(2026, 9, 17, 14, 0),
+      page: {
+        heading: 'AdventsFYS & AdventsMYS',
+        text:
+          'Söndag 29/11 kl 16.00 till cirka 17.30.\n\nVi startar med ett gott pass i Ladan. Efter passet bjuds det på fika och mysigt häng inne i gymmet.\n\nI priset på 280 kr ingår träningspass, årets tröja och fika. Tröjan finns i storlek S till XXL och provexemplar finns i väntrummet. Skriv din storlek på listan senast fredag 6/11.\n\nTagga gärna någon du vill ska komma också!',
+      },
+    },
+    {
       id: 'n-welcome',
       title: 'Välkommen till CT-omgång v 45–51!',
       body: 'Ditt ordinarie pass är tisdagar 18.45 i Gymmet. Lämna återbud senast dagen innan så får du passet tillgodo.',
@@ -78,6 +100,7 @@ const initial: State = {
   ],
   banner: null,
   toast: null,
+  openNotice: null,
   registrations: initialRegistrations,
   payments: initialPayments,
   mySignup: null,
@@ -115,9 +138,13 @@ function reducer(s: State, a: Action): State {
     case 'attend':
       return { ...s, attending: { ...s.attending, [a.occ.id]: true } };
     case 'push': {
-      const n = notice(a.title, a.body);
+      const n = notice(a.title, a.body, a.page);
       return { ...s, inbox: [n, ...s.inbox], banner: n, toast: { title: 'Notisen är skickad', body: a.title } };
     }
+    case 'openNotice':
+      return { ...s, openNotice: a.id, banner: null };
+    case 'closeNotice':
+      return { ...s, openNotice: null };
     case 'dismissBanner':
       return { ...s, banner: null };
     case 'toast':

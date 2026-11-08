@@ -397,9 +397,39 @@ export function InboxScreen() {
         <Card key={n.id}>
           <Text style={{ fontWeight: '700', fontSize: 15 }}>{n.title}</Text>
           <P style={{ marginTop: 4 }}>{n.body}</P>
-          <P muted style={{ marginTop: 6, fontSize: 12 }}>{fmtTime(n.at)}</P>
+          <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
+            <P muted style={{ fontSize: 12 }}>{fmtTime(n.at)}</P>
+            {n.page ? <Button small variant="secondary" title="Läs mer" onPress={() => s.dispatch({ type: 'openNotice', id: n.id })} /> : null}
+          </Row>
         </Card>
       ))}
+    </View>
+  );
+}
+
+// ------------------------------------------------------------------ Informationssida
+
+export function InfoPageScreen() {
+  const s = useStore();
+  const n = s.inbox.find((x) => x.id === s.openNotice);
+  if (!n?.page) return null;
+  const { heading, text, link } = n.page;
+  return (
+    <View>
+      <Button small variant="ghost" title="Tillbaka" onPress={() => s.dispatch({ type: 'closeNotice' })} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, marginBottom: 6 }} />
+      <H1>{heading}</H1>
+      <P muted style={{ marginBottom: 16 }}>Från Emma · {fmtTime(n.at)}</P>
+      {text.split(/\n\n+/).map((para, i) => (
+        <P key={i} style={{ marginBottom: 12, fontSize: 16, lineHeight: 24 }}>{para}</P>
+      ))}
+      {link ? (
+        <Button
+          variant="secondary"
+          title="Öppna länk"
+          onPress={() => Linking.openURL(link).catch(() => notify(s, 'Länk', link))}
+          style={{ marginTop: 8, marginBottom: 20 }}
+        />
+      ) : null}
     </View>
   );
 }
