@@ -70,14 +70,24 @@ StarkMamma har flera träningsformer: crosstraining, mammaträning med bebis, gr
 
 ## Teknik
 
-**En native-app för iPhone och Android med pushnotiser.** Tränaren ska kunna nå deltagarna direkt i mobilen, vilket i dag är huvudskälet till att Facebook används.
+**Webbapp först, native-app sedan, med samma kod.** Appen byggs med **Expo (React Native) och TypeScript**, som kan byggas både som webbapp och som riktiga appar för iPhone och Android. Webbappen kommer ut snabbare, och native-appen blir sedan ett bygge av samma kod, inte en omskrivning.
 
-- **Expo (React Native) och TypeScript:** en kodbas ger riktiga appar i App Store och Google Play. Samma kod kan också köras som webbversion, till exempel för prototyper och för deltagare som inte vill installera appen
-- **Pushnotiser:** `expo-notifications` och Expo Push API, som levererar via Apple (APNs) och Google (FCM). Varje deltagares push-token sparas i backend, och tränaren skickar till alla, en grupp, de som inte betalat eller en kö direkt från appen. E-post och sms används som reserv för den som saknar appen eller har stängt av notiser
-- **Bygge och publicering:** EAS Build och Submit ger bygget i molnet, och EAS Update ger snabba uppdateringar utan ny granskning i App Store
+### Fas 1: webbapp som kan installeras (PWA)
+- Webbappen publiceras på en egen adress, till exempel `app.starkmamma.com` via Vercel. Deltagarna får länken via sms, e-post och Facebook
+- **Installation:** deltagaren lägger appen på hemskärmen och får då egen ikon och helskärmsläge
+- **Pushnotiser (Web Push)** via service worker (`public/sw.js`) och VAPID-nycklar (`src/webpush.ts`). Det fungerar på Android och dator, och på iPhone med iOS 16.4 eller senare **om appen ligger på hemskärmen**. Appen visar hur man installerar den på iPhone
+- Sms och e-post fungerar som reserv för den som inte installerat appen eller har stängt av notiser
+
+### Fas 2: native-appar i App Store och Google Play
+- Samma kod byggs med **EAS Build** och publiceras med **EAS Submit**. EAS Update gör att rättningar kan skickas ut utan ny granskning i App Store
+- Pushnotiserna går då via `expo-notifications` (`src/push.ts`), alltså genom Apple (APNs) och Google (FCM). Backend skickar till den kanal varje deltagare har: native-push, Web Push eller sms
+- **Konton som krävs:** Apple Developer (99 USD per år) och Google Play Console (25 USD en gång), helst i StarkMammas namn
+- Byt till native när webbappen fungerar i vardagen, eller tidigare om notiserna på iPhone visar sig vara för krångliga att få igång
+
+### Gemensamt
 - **Backend: Supabase.** Postgres, inloggning med engångskod via sms eller e-post, radbaserade behörigheter och Edge Functions för push, påminnelser och schemalagda jobb, till exempel "dagen innan"-notisen. Datat lagras i EU (Stockholm)
 - **Swish:** först Swish-länkar med ifyllt belopp och meddelande och manuell markering av betalningar. Senare Swish Handel för automatisk avstämning
-- **Konton som krävs:** Apple Developer (99 USD per år) och Google Play Console (25 USD en gång), helst i StarkMammas namn
+- **Regler i webbappen:** kod som bara fungerar i native-appen eller bara i webbläsaren hålls i egna filer, till exempel `push.ts` och `webpush.ts`, så att konverteringen förblir smärtfri
 
 ## Datamodell (grov)
 
@@ -110,9 +120,10 @@ Det svåraste i början är **anmälningsrusningen**, som kräver att flera samt
 
 1. **Validera med tränaren:** gå igenom kartläggningen och svaren på de öppna frågorna, och visa skisser på deltagarens och tränarens viktigaste vyer
 2. **Klickbar prototyp** (finns i `app/`) av "Mitt schema", återbud, bokning, anmälan, passlista, push och betalningar. Testa den på tränaren och 3–5 deltagare, gärna någon som inte är på Facebook
-3. **Bygga version 1** i ungefär 4–6 veckor **(grov uppskattning)**
+3. **Bygga version 1 som webbapp** i ungefär 4–6 veckor **(grov uppskattning)**
 4. **Pilot** med en grupp under en omgång parallellt med Facebook
-5. **Hela omgången i appen** från nästa omgångsstart, sedan version 2 och 3 efter behov
+5. **Hela omgången i appen** från nästa omgångsstart
+6. **Native-appar** i App Store och Google Play från samma kod, och därefter version 2 och 3 efter behov
 
 ## Risker
 

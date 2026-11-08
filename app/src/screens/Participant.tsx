@@ -14,6 +14,7 @@ import {
   startOf,
 } from '../data';
 import { useStore } from '../store';
+import { subscribeWebPush, webPushSupport } from '../webpush';
 import { colors } from '../theme';
 import { Bar, Button, Card, Chip, H1, H2, P, Pill, Row } from '../ui';
 
@@ -51,6 +52,8 @@ export function HomeScreen() {
         <Pill text={`10-kort: ${s.punchLeft} klipp kvar`} />
       </Row>
 
+      <PushPrompt />
+
       {next && (
         <Card style={{ borderColor: colors.ink, borderWidth: 2 }}>
           <P muted>Nästa pass</P>
@@ -79,6 +82,36 @@ export function HomeScreen() {
         <SessionRow key={o.id} o={o} />
       ))}
     </View>
+  );
+}
+
+function PushPrompt() {
+  const s = useStore();
+  const [hidden, setHidden] = useState(false);
+  const support = webPushSupport();
+  if (hidden || Platform.OS !== 'web' || support === 'unsupported' || support === 'subscribed') return null;
+  return (
+    <Card style={{ backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }}>
+      <H2>Få besked direkt i mobilen 🔔</H2>
+      {support === 'needs-install' ? (
+        <P>På iPhone: tryck på Dela-knappen i Safari och välj "Lägg till på hemskärmen". Öppna sedan StarkMamma därifrån och slå på notiser.</P>
+      ) : support === 'denied' ? (
+        <P>Notiser är avstängda för StarkMamma. Slå på dem i webbläsarens inställningar.</P>
+      ) : (
+        <>
+          <P style={{ marginBottom: 10 }}>Lediga platser, ändrad lokal och påminnelser kommer som notiser.</P>
+          <Button
+            small
+            title="Slå på notiser"
+            onPress={async () => {
+              const sub = await subscribeWebPush();
+              notify(s, sub ? 'Notiser påslagna' : 'Notiser', sub ? 'Du får nu besked från StarkMamma.' : 'I den riktiga appen ber webbläsaren nu om lov att visa notiser.');
+              setHidden(true);
+            }}
+          />
+        </>
+      )}
+    </Card>
   );
 }
 
