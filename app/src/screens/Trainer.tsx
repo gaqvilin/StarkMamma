@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import {
   ME,
   MIN_PER_GROUP,
   NOW,
+  Occurrence,
   Registration,
   dateLabel,
   groupById,
@@ -18,62 +19,174 @@ import { Bar, Button, Card, Chip, H1, H2, P, Pill, Row } from '../ui';
 
 // ------------------------------------------------------------------ Passlista
 
+type Status = 'kommer' | 'återbud' | 'inget svar';
+type Store = ReturnType<typeof useStore>;
+
+const DAY_MS = 24 * 3600 * 1000;
+const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+/** Svar på "kommer du?" efterfrågas dagen innan, så närvaro visas bara för pass idag och imorgon. */
+const asksAttendance = (o: Occurrence) => dayStart(o.date).getTime() - dayStart(NOW).getTime() <= DAY_MS;
+
+// Deterministisk låtsasstatus för deltagarna så att prototypen ser levande ut.
+function sessionPeople(s: Store, o: Occurrence) {
+  let h = 0;
+  for (const c of o.id) h = (h * 31 + c.charCodeAt(0)) % 1009;
+  const cap = s.capacity(o);
+  const booked = Math.min(cap, s.bookedCount(o));
+  const cancelIdx = h % 4 === 0 ? [5, 9] : h % 4 === 1 ? [5] : [];
+  const list: { name: string; status: Status }[] = [];
+  roster.slice(0, Math.min(roster.length, booked + (s.cancelled[o.id] ? 1 : 0))).forEach((name, i) => {
+    let status: Status = (i + h) % 5 === 3 ? 'inget svar' : 'kommer';
+    if (cancelIdx.includes(i)) status = 'återbud';
+    if (name === ME.name) {
+      if (!ME.groups.includes(o.groupId) && !s.extra[o.id]) return;
+      status = s.cancelled[o.id] ? 'återbud' : s.attending[o.id] ? 'kommer' : 'inget svar';
+    }
+    list.push({ name, status });
+  });
+  const free = cap - booked;
+  const queue = free > 0 ? 0 : 1 + (h % 2);
+  return {
+    people: list,
+    booked,
+    cap,
+    free,
+    queue,
+    coming: list.filter((p) => p.status === 'kommer').length,
+    noAnswer: list.filter((p) => p.status === 'inget svar').length,
+    cancelled: list.filter((p) => p.status === 'återbud').length,
+  };
+}
+
+const WEEK_DATES: Record<number, string> = {
+  45: '2–8/11', 46: '9–15/11', 47: '16–22/11', 48: '23–29/11', 49: '30/11–6/12', 50: '7–13/12', 51: '14–20/12',
+};
+
 export function RosterScreen() {
   const s = useStore();
-  const upcoming = useMemo(() => occurrences.filter((o) => startOf(o) > NOW).slice(0, 8), []);
-  const [selId, setSelId] = useState(upcoming.find((o) => ME.groups.includes(o.groupId))!.id);
-  const occ = upcoming.find((o) => o.id === selId)!;
-  const booked = s.bookedCount(occ);
-  const cap = s.capacity(occ);
+  const [week, setWeek] = useState(46);
+  const [open, setOpen] = useState<string | null>(null);
 
-  // Deterministisk låtsasstatus för de andra deltagarna
-  const people = roster.slice(0, Math.min(roster.length, booked + (s.cancelled[occ.id] ? 1 : 0))).map((name, i) => {
-    let status: 'kommer' | 'återbud' | 'inget svar' = i % 4 === 3 ? 'inget svar' : 'kommer';
-    if (i === 6) status = 'återbud';
-    if (name === ME.name) {
-      if (!ME.groups.includes(occ.groupId) && !s.extra[occ.id]) return null;
-      status = s.cancelled[occ.id] ? 'återbud' : s.attending[occ.id] ? 'kommer' : 'inget svar';
-    }
-    return { name, status };
-  }).filter(Boolean) as { name: string; status: string }[];
+  const weekOccs = occurrences.filter((o) => o.week === week);
+  const stats = new Map(weekOccs.map((o) => [o.id, sessionPeople(s, o)]));
+  const upcomingStats = weekOccs.filter((o) => startOf(o) > NOW).map((o) => stats.get(o.id)!);
+  const totalFree = upcomingStats.reduce((a, x) => a + Math.max(0, x.free), 0);
+  const totalCancelled = upcomingStats.reduce((a, x) => a + x.cancelled, 0);
+  const totalQueue = upcomingStats.reduce((a, x) => a + x.queue, 0);
 
-  const coming = people.filter((p) => p.status === 'kommer').length;
-  const noAnswer = people.filter((p) => p.status === 'inget svar').length;
-  const freed = people.filter((p) => p.status === 'återbud').length;
+  const byDay = new Map<string, Occurrence[]>();
+  weekOccs.forEach((o) => {
+    const k = dayStart(o.date).toISOString();
+    byDay.set(k, [...(byDay.get(k) ?? []), o]);
+  });
+
+  const relDay = (d: Date) => {
+    const diff = Math.round((dayStart(d).getTime() - dayStart(NOW).getTime()) / DAY_MS);
+    return diff === 0 ? 'idag' : diff === 1 ? 'imorgon' : '';
+  };
 
   return (
     <View>
       <H1>Pass</H1>
-      <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>
-        {upcoming.map((o) => (
-          <Chip key={o.id} label={`${['sön', 'mån', 'tis', 'ons', 'tors', 'fre', 'lör'][o.date.getDay()]} ${o.date.getDate()}/${o.date.getMonth() + 1} ${o.time}`} active={o.id === selId} onPress={() => setSelId(o.id)} />
+
+      <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+        <Button small variant="secondary" title="Föregående" disabled={week <= 45} onPress={() => { setWeek(week - 1); setOpen(null); }} />
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontWeight: '800', fontSize: 16 }}>Vecka {week}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>{WEEK_DATES[week]}</Text>
+        </View>
+        <Button small variant="secondary" title="Nästa" disabled={week >= 51} onPress={() => { setWeek(week + 1); setOpen(null); }} />
+      </Row>
+
+      <Row style={{ marginBottom: 16 }}>
+        {[
+          { n: totalFree, label: 'lediga platser', color: colors.ok },
+          { n: totalCancelled, label: 'återbud', color: colors.danger },
+          { n: totalQueue, label: 'i kö', color: colors.accent },
+        ].map((x) => (
+          <Card key={x.label} style={{ flex: 1, marginBottom: 0, paddingVertical: 10, alignItems: 'center' }}>
+            <Text style={{ fontSize: 22, fontWeight: '800', color: x.color }}>{x.n}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>{x.label}</Text>
+          </Card>
         ))}
       </Row>
 
-      <Card>
-        <H2 style={{ fontSize: 20 }}>{dateLabel(occ.date)} · {occ.time} · {occ.place}</H2>
-        <Row style={{ flexWrap: 'wrap' }}>
-          <Pill tone="ok" text={`${coming} kommer`} />
-          <Pill tone="warn" text={`${noAnswer} inget svar`} />
-          <Pill tone="danger" text={`${freed} återbud`} />
-          <Pill text={`${booked}/${cap} bokade`} />
-        </Row>
-        <Bar value={booked} max={cap} />
-        <Row style={{ marginTop: 14, flexWrap: 'wrap' }}>
-          <Button small title="Påminn de som inte svarat" onPress={() => s.dispatch({ type: 'push', title: `Kommer du ${dateLabel(occ.date).toLowerCase()} ${occ.time}?`, body: `Svara "Jag kommer" eller lämna återbud i appen. ${occ.place === 'Gymmet' ? 'Rena inomhusskor!' : 'Klä dig varmt – vi kör i Ladan.'}` })} />
-          {freed > 0 && (
-            <Button small variant="secondary" title={`Erbjud ${freed} plats till kön`} onPress={() => s.dispatch({ type: 'push', title: `Ledig plats ${occ.time} idag`, body: `Det finns ${freed} ledig plats på ${occ.place} ${occ.time}. Först att trycka "Boka" får platsen.` })} />
-          )}
-        </Row>
-      </Card>
+      {[...byDay.entries()].map(([k, occs]) => {
+        const d = occs[0].date;
+        const rel = relDay(d);
+        return (
+          <View key={k} style={{ marginBottom: 14 }}>
+            <Row style={{ marginBottom: 6 }}>
+              <Text style={{ fontWeight: '800', fontSize: 13, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dateLabel(d)}</Text>
+              {rel ? <Pill tone="accent" text={rel} /> : null}
+            </Row>
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              {occs.map((o, idx) => {
+                const st = stats.get(o.id)!;
+                const past = startOf(o) <= NOW;
+                const isOpen = open === o.id;
+                return (
+                  <View key={o.id} style={{ borderTopWidth: idx ? 1 : 0, borderColor: colors.line }}>
+                    <Pressable onPress={() => setOpen(isOpen ? null : o.id)} style={{ padding: 14, opacity: past ? 0.45 : 1 }}>
+                      <Row style={{ justifyContent: 'space-between' }}>
+                        <Row>
+                          <Text style={{ fontWeight: '800', fontSize: 17, fontVariant: ['tabular-nums'] }}>{o.time}</Text>
+                          <Text style={{ color: colors.muted, fontSize: 14 }}>{o.place}</Text>
+                          {o.moved ? <Pill tone="warn" text="flyttat" /> : null}
+                        </Row>
+                        <Text style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}>{st.booked}/{st.cap}</Text>
+                      </Row>
+                      <Bar value={st.booked} max={st.cap} />
+                      <Row style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                        {past ? (
+                          <Text style={{ color: colors.muted, fontSize: 13 }}>Genomfört</Text>
+                        ) : (
+                          <>
+                            {asksAttendance(o) ? (
+                              <Text style={{ fontSize: 13, color: colors.muted }}>
+                                <Text style={{ color: colors.ok, fontWeight: '700' }}>{st.coming} kommer</Text>
+                                {st.noAnswer ? <Text style={{ color: colors.warn, fontWeight: '700' }}>{`  ·  ${st.noAnswer} inget svar`}</Text> : null}
+                              </Text>
+                            ) : null}
+                            {st.cancelled ? <Pill tone="danger" text={`${st.cancelled} återbud`} /> : null}
+                            {st.free > 0 ? <Pill tone="ok" text={`${st.free} ledig${st.free > 1 ? 'a' : ''}`} /> : null}
+                            {st.queue ? <Pill tone="accent" text={`${st.queue} i kö`} /> : null}
+                          </>
+                        )}
+                      </Row>
+                    </Pressable>
 
-      {people.map((p) => (
-        <Row key={p.name} style={{ justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.line }}>
-          <Text style={{ fontSize: 15, fontWeight: p.name === ME.name ? '800' : '500' }}>{p.name}</Text>
-          <Pill tone={p.status === 'kommer' ? 'ok' : p.status === 'återbud' ? 'danger' : 'warn'} text={p.status} />
-        </Row>
-      ))}
-      <P muted style={{ marginTop: 12 }}>Kö: Petra Hed, Linnea Ros</P>
+                    {isOpen && (
+                      <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+                        {!past && (
+                          <Row style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+                            {asksAttendance(o) && st.noAnswer > 0 && (
+                              <Button small title={`Påminn ${st.noAnswer} som inte svarat`} onPress={() => s.dispatch({ type: 'push', title: `Kommer du ${dateLabel(o.date).toLowerCase()} ${o.time}?`, body: `Svara "Jag kommer" eller lämna återbud i appen. ${o.place === 'Gymmet' ? 'Rena inomhusskor.' : 'Klä dig varmt, vi kör i Ladan.'}` })} />
+                            )}
+                            {st.cancelled > 0 && (
+                              <Button small variant="secondary" title="Erbjud platsen till kön" onPress={() => s.dispatch({ type: 'push', title: `Ledig plats ${dateLabel(o.date).toLowerCase()} ${o.time}`, body: `Det finns en ledig plats på ${o.place} ${o.time}. Den som först trycker "Boka" får platsen.` })} />
+                            )}
+                          </Row>
+                        )}
+                        {st.people.map((p) => (
+                          <Row key={p.name} style={{ justifyContent: 'space-between', paddingVertical: 7 }}>
+                            <Text style={{ fontSize: 15, fontWeight: p.name === ME.name ? '800' : '500' }}>{p.name}</Text>
+                            {asksAttendance(o) || p.status === 'återbud' ? (
+                              <Pill tone={p.status === 'kommer' ? 'ok' : p.status === 'återbud' ? 'danger' : 'warn'} text={p.status} />
+                            ) : null}
+                          </Row>
+                        ))}
+                        {st.queue ? <P muted style={{ marginTop: 6 }}>Kö: {['Petra Hed', 'Linnea Ros'].slice(0, st.queue).join(', ')}</P> : null}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </Card>
+          </View>
+        );
+      })}
     </View>
   );
 }
