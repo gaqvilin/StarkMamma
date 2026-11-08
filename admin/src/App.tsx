@@ -16,18 +16,19 @@ type Key = (typeof PAGES)[number]['key'];
 const fromHash = (): Key => (PAGES.find((p) => `#${p.key}` === location.hash)?.key ?? 'week');
 
 export function App() {
-  const [admin, setAdmin] = useState<boolean | null>(null);
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [page, setPage] = useState<Key>(fromHash);
 
   useEffect(() => {
-    api<{ admin: boolean }>('login').then((r) => setAdmin(r.admin)).catch(() => setAdmin(false));
+    api<{ user: User | null }>('me').then((r) => setUser(r.user)).catch(() => setUser(null));
     const onHash = () => setPage(fromHash());
     addEventListener('hashchange', onHash);
     return () => removeEventListener('hashchange', onHash);
   }, []);
 
-  if (admin === null) return null;
-  if (!admin) return <Login onDone={() => setAdmin(true)} />;
+  if (user === undefined) return null;
+  if (!user) return <Login onDone={setUser} />;
+  if (user.role !== 'trainer') return <NotTrainer user={user} onLogout={() => setUser(null)} />;
 
   const { Page } = PAGES.find((p) => p.key === page)!;
   return (
@@ -45,7 +46,7 @@ export function App() {
           className="link logout"
           onClick={async () => {
             await api('logout', { method: 'POST' });
-            setAdmin(false);
+            setUser(null);
           }}
         >
           Logga ut
@@ -67,31 +68,100 @@ function Logo() {
   );
 }
 
-function Login({ onDone }: { onDone: () => void }) {
-  const [password, setPassword] = useState('');
+interface User {
+  id: string;
+  name: string;
+  role: 'participant' | 'trainer';
+}
+
+/** Samma inloggning som i mobilappen: mobilnummer eller e-post och en engångskod. */
+function Login({ onDone }: { onDone: (u: User) => void }) {
+  const [identifier, setIdentifier] = useState('');
+  const [step, setStep] = useState<'who' | 'code'>('who');
+  const [code, setCode] = useState('');
+  const [demoCode, setDemoCode] = useState('');
   const [error, setError] = useState('');
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
+  const [busy, setBusy] = useState(false);
+
+  const run = async (fn: () => Promise<void>) => {
     setError('');
+    setBusy(true);
     try {
-      await api('login', { method: 'POST', body: { password } });
-      onDone();
+      await fn();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
+
+  const start = (e: FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ demoCode?: string }>('auth-start', { method: 'POST', body: { identifier } });
+      setDemoCode(r.demoCode ?? '');
+      setStep('code');
+    });
+  };
+  const verify = (e: FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api<{ user: User }>('auth-verify', { method: 'POST', body: { identifier, code } });
+      onDone(r.user);
+    });
+  };
+
   return (
     <div className="login">
-      <form onSubmit={submit} className="card login-card">
+      {step === 'who' ? (
+        <form onSubmit={start} className="card login-card">
+          <Logo />
+          <h1>Logga in</h1>
+          <label htmlFor="who">Mobilnummer eller e-post</label>
+          <input id="who" autoFocus autoComplete="username" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+          {error && <p className="error">{error}</p>}
+          <button className="btn primary" disabled={busy || !identifier.trim()} type="submit">
+            Skicka kod
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={verify} className="card login-card">
+          <Logo />
+          <h1>Skriv koden</h1>
+          <p className="muted">Om {identifier} finns registrerad har vi skickat en kod med 6 siffror.</p>
+          {demoCode && <p className="chip accent">Demoläge: koden är {demoCode}</p>}
+          <label htmlFor="code">Kod</label>
+          <input id="code" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} />
+          {error && <p className="error">{error}</p>}
+          <button className="btn primary" disabled={busy || code.length !== 6} type="submit">
+            Logga in
+          </button>
+          <button type="button" className="link" onClick={() => { setStep('who'); setCode(''); setError(''); }}>
+            Byt nummer eller e-post
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function NotTrainer({ user, onLogout }: { user: User; onLogout: () => void }) {
+  return (
+    <div className="login">
+      <div className="card login-card">
         <Logo />
-        <h1>Admin</h1>
-        <label htmlFor="pw">Lösenord</label>
-        <input id="pw" type="password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
-        {error && <p className="error">{error}</p>}
-        <button className="btn primary" type="submit">
-          Logga in
+        <h1>Hej {user.name.split(' ')[0]}!</h1>
+        <p className="muted">Den här sidan är bara för Emma. Dina pass, återbud och betalningar hittar du i StarkMamma-appen.</p>
+        <button
+          className="btn"
+          onClick={async () => {
+            await api('logout', { method: 'POST' });
+            onLogout();
+          }}
+        >
+          Logga ut
         </button>
-      </form>
+      </div>
     </div>
   );
 }

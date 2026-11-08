@@ -1,10 +1,10 @@
 // GET /api/round -> pågående omgång med priser och grupper (antal medlemmar per grupp).
-import { requireAdmin } from './_lib/auth.js';
+import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { json } from './_lib/http.js';
 
 export async function GET(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const q = await db();
   const [round] = await q(

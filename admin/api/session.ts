@@ -1,11 +1,11 @@
 // GET /api/session?id=<uuid> -> passet, deltagarlistan och kön.
-import { requireAdmin } from './_lib/auth.js';
+import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, isUuid, json } from './_lib/http.js';
 import { ROSTER_CTE } from './_lib/roster.js';
 
 export async function GET(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const id = new URL(request.url).searchParams.get('id');
   if (!isUuid(id)) return bad('Ogiltigt pass');

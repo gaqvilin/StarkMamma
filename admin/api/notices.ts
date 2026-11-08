@@ -3,14 +3,14 @@
 //   audience: 'all' | 'group:<uuid>'
 // Notisen sparas med en mottagarlista. Själva leveransen (Expo Push / Web Push / sms)
 // kopplas på när deltagarappen registrerar push-token; tills dess står den som "väntar".
-import { requireAdmin } from './_lib/auth.js';
+import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
 
 type Input = { title?: string; body?: string; audience?: string; page?: { heading?: string; text?: string; link?: string } };
 
 export async function GET(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const q = await db();
   const notices = await q(
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const input = await body<Input>(request);
   const title = (input.title ?? '').trim();

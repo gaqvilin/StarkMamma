@@ -30,7 +30,7 @@ export async function demoDb(): Promise<Query> {
   const path = await import('node:path');
   const root = path.resolve(process.cwd(), process.cwd().endsWith('admin') ? '..' : '.');
   const pg = new PGlite();
-  for (const f of ['db/migrations/001_init.sql', 'db/migrations/002_seed_ct_v45_51.sql', 'admin/dev/demo-seed.sql']) {
+  for (const f of ['db/migrations/001_init.sql', 'db/migrations/002_seed_ct_v45_51.sql', 'db/migrations/003_login_codes.sql', 'admin/dev/demo-seed.sql']) {
     await pg.exec(await fs.readFile(path.join(root, f), 'utf8'));
   }
   return (async (text: string, params: unknown[] = []) => (await pg.query(text, params)).rows as never) as Query;

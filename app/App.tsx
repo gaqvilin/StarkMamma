@@ -4,11 +4,11 @@ import { Animated, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, 
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BookScreen, HomeScreen, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
+import { LoginScreen, Role } from './src/screens/Login';
 import { Notice, StoreProvider, useStore } from './src/store';
 import { BellIcon } from './src/icons';
 import { colors } from './src/theme';
 
-type Role = 'deltagare' | 'tränare';
 
 const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentType }[]> = {
   deltagare: [
@@ -63,19 +63,8 @@ function Toast() {
   );
 }
 
-// Det finns bara en tränare: Emma. I den riktiga appen avgörs vyn av vem som är inloggad.
-// I prototypen öppnas Emmas vy genom att lägga till #emma i adressen.
-const roleFromHash = (): Role =>
-  typeof window !== 'undefined' && window.location?.hash === '#emma' ? 'tränare' : 'deltagare';
-
-function Shell() {
-  const [role, setRole] = useState<Role>(roleFromHash);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.addEventListener) return;
-    const onHash = () => setRole(roleFromHash());
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+// Vilken vy man får avgörs av inloggningen: Emma (tränare) kommer till admin, alla andra till deltagarvyn.
+function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
   const [tab, setTab] = useState<Record<Role, string>>({ deltagare: 'home', tränare: 'roster' });
   const tabs = TABS[role];
   const current = tabs.find((t) => t.key === tab[role]) ?? tabs[0];
@@ -89,7 +78,6 @@ function Shell() {
 
   const toTop = () => scroll.current?.scrollTo({ y: 0, animated: false });
   const go = (r: Role, k: string) => {
-    setRole(r);
     setTab((t) => ({ ...t, [r]: k }));
     setShowInbox(false);
     if (openNotice) dispatch({ type: 'closeNotice' });
@@ -111,7 +99,10 @@ function Shell() {
           <Text style={styles.logoMamma}>mamma</Text>
         </View>
         {role === 'tränare' ? (
-          <Text style={styles.adminLabel}>Emma</Text>
+          <Pressable onPress={onLogout} accessibilityRole="button" style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.adminLabel}>Emma</Text>
+            <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '700' }}>Logga ut</Text>
+          </Pressable>
         ) : (
           <Pressable
             onPress={openInbox}
@@ -131,6 +122,11 @@ function Shell() {
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
         {showInfo ? <InfoPageScreen /> : showInbox && role === 'deltagare' ? <InboxScreen /> : <Screen />}
+        {role === 'deltagare' && current.key === 'home' && !showInbox && !showInfo ? (
+          <Pressable onPress={onLogout} accessibilityRole="button" style={{ alignSelf: 'center', padding: 16 }}>
+            <Text style={{ color: colors.muted, fontWeight: '700' }}>Logga ut</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.tabBar}>
@@ -162,10 +158,18 @@ function Shell() {
 }
 
 export default function App() {
+  const [role, setRole] = useState<Role | null>(null);
   return (
     <SafeAreaProvider>
       <StoreProvider>
-        <Shell />
+        {role ? (
+          <Shell key={role} role={role} onLogout={() => setRole(null)} />
+        ) : (
+          <SafeAreaView style={styles.root}>
+            <StatusBar style="dark" />
+            <LoginScreen onDone={setRole} />
+          </SafeAreaView>
+        )}
       </StoreProvider>
     </SafeAreaProvider>
   );

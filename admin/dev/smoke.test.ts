@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 process.env.DEMO_DB = '1';
 
 let cookie = '';
+let token = '';
 const call = async (mod: Record<string, (r: Request) => Promise<Response>>, method: string, url: string, data?: unknown) => {
   const res = await mod[method](
     new Request(`http://localhost${url}`, {
@@ -15,13 +16,60 @@ const call = async (mod: Record<string, (r: Request) => Promise<Response>>, meth
   return { status: res.status, data: await res.json(), headers: res.headers };
 };
 
+async function loginAs(identifier: string) {
+  const start = await import('../api/auth-start');
+  const verify = await import('../api/auth-verify');
+  const s1 = await call(start, 'POST', '/api/auth-start', { identifier });
+  const s2 = await call(verify, 'POST', '/api/auth-verify', { identifier, code: s1.data.demoCode });
+  token = s2.data.token;
+  return s2.headers.get('set-cookie')!.split(';')[0];
+}
+
 describe('admin-API', () => {
   beforeAll(async () => {
-    const login = await import('../api/login');
-    const bad = await call(login, 'POST', '/api/login', { password: 'fel' });
-    expect(bad.status).toBe(401);
-    const ok = await call(login, 'POST', '/api/login', { password: 'demo' });
+    cookie = await loginAs('starkmammavarberg@gmail.com');
+  });
+
+  it('Emma är inloggad som tränare, både med cookie och Bearer-token', async () => {
+    const me = await import('../api/me');
+    expect((await call(me, 'GET', '/api/me')).data.user.role).toBe('trainer');
+    const res = await me.GET(new Request('http://localhost/api/me', { headers: { authorization: `Bearer ${token}` } }));
+    expect((await res.json()).user.role).toBe('trainer');
+  });
+
+  it('en ny kod kan inte begäras direkt igen', async () => {
+    const start = await import('../api/auth-start');
+    const r = await call(start, 'POST', '/api/auth-start', { identifier: 'StarkMammaVarberg@gmail.com' });
+    expect(r.status).toBe(429);
+  });
+
+  it('en deltagare loggar in men kommer inte åt admin', async () => {
+    const people = await import('../api/people');
+    const start = await import('../api/auth-start');
+    const verify = await import('../api/auth-verify');
+    const me = await import('../api/me');
+    const week = await import('../api/week');
+    await call(people, 'POST', '/api/people', { name: 'Deltagar Test', phone: '+46 70 999 88 77' });
+    const saved = cookie;
+
+    const s1 = await call(start, 'POST', '/api/auth-start', { identifier: '070-999 88 77' });
+    const wrongCode = s1.data.demoCode === '000000' ? '111111' : '000000';
+    expect((await call(verify, 'POST', '/api/auth-verify', { identifier: '0709998877', code: wrongCode })).status).toBe(401);
+    const ok = await call(verify, 'POST', '/api/auth-verify', { identifier: '0709998877', code: s1.data.demoCode });
+    expect(ok.data.user.role).toBe('participant');
+    expect((await call(verify, 'POST', '/api/auth-verify', { identifier: '0709998877', code: s1.data.demoCode })).status).toBe(401);
+
     cookie = ok.headers.get('set-cookie')!.split(';')[0];
+    expect((await call(me, 'GET', '/api/me')).data.user.role).toBe('participant');
+    expect((await call(week, 'GET', '/api/week?from=2026-11-09')).status).toBe(403);
+    cookie = saved;
+  });
+
+  it('okänt nummer får samma svar men ingen kod', async () => {
+    const start = await import('../api/auth-start');
+    const r = await call(start, 'POST', '/api/auth-start', { identifier: '0701112233' });
+    expect(r.status).toBe(200);
+    expect(r.data.demoCode).toBeUndefined();
   });
 
   it('kräver inloggning', async () => {

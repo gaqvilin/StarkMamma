@@ -1,14 +1,15 @@
 // GET  /api/people            -> alla deltagare med grupper i pågående omgång
 // POST /api/people {name, phone?, email?, groupIds?} -> ny deltagare
 // PUT  /api/people {id, name, phone?, email?, groupIds} -> uppdatera deltagare och grupper
-import { requireAdmin } from './_lib/auth.js';
+import { requireTrainer } from './_lib/auth.js';
 import { db, Query } from './_lib/db.js';
+import { normalizePhone } from './_lib/auth.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
 
 type Input = { id?: string; name?: string; phone?: string; email?: string; groupIds?: string[] };
 
 export async function GET(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const q = await db();
   const people = await q(
@@ -23,10 +24,11 @@ export async function GET(request: Request) {
 
 function clean(input: Input) {
   const name = (input.name ?? '').trim();
-  const phone = (input.phone ?? '').replace(/[^\d+]/g, '') || null;
+  const phone = normalizePhone(input.phone ?? '');
   const email = (input.email ?? '').trim().toLowerCase() || null;
   const groupIds = Array.isArray(input.groupIds) ? input.groupIds.filter(isUuid) : [];
   if (!name) return { error: 'Namn saknas' } as const;
+  if ((input.phone ?? '').trim() && !phone) return { error: 'Ogiltigt mobilnummer' } as const;
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Ogiltig e-postadress' } as const;
   return { name, phone, email, groupIds } as const;
 }
@@ -45,7 +47,7 @@ const conflict = (e: unknown) =>
   /duplicate key|unique/i.test(String((e as Error).message)) ? bad('Telefonnummer eller e-post används redan', 409) : null;
 
 export async function POST(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const c = clean(await body<Input>(request));
   if ('error' in c) return bad(c.error!);
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const denied = requireAdmin(request);
+  const denied = await requireTrainer(request);
   if (denied) return denied;
   const input = await body<Input>(request);
   if (!isUuid(input.id)) return bad('Ogiltig deltagare');
