@@ -1,5 +1,5 @@
 // Web Push för webbappen (PWA). Motsvarar src/push.ts i den native appen.
-// Prenumerationen skickas till backend (Supabase) och används när tränaren skickar en notis.
+// Prenumerationen skickas till backend (Neon via API på Vercel) och används när tränaren skickar en notis.
 // På iPhone fungerar Web Push bara när appen lagts till på hemskärmen (iOS 16.4 eller senare).
 import { Platform } from 'react-native';
 

@@ -1,5 +1,5 @@
 // Registrering för pushnotiser (används i den riktiga appen, inte i webbprototypen).
-// Token sparas i backend (Supabase) och används av tränarens "Skicka notis" via Expo Push API,
+// Token sparas i backend (Neon via API på Vercel) och används av tränarens "Skicka notis" via Expo Push API,
 // som i sin tur levererar via Apple (APNs) och Google (FCM).
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
