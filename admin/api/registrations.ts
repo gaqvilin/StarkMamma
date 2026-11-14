@@ -40,9 +40,22 @@ export async function GET(request: Request) {
      order by r.created_at`,
     [roundId],
   );
+  // Hur många som sökt varje grupp i första respektive andra hand (alla anmälningar som inte dragits tillbaka).
+  const demand = await q<{ group_id: string; first: number; second: number }>(
+    `select c.group_id,
+       count(*) filter (where c.rank = 1)::int as first,
+       count(*) filter (where c.rank = 2)::int as second
+     from registration_choices c join registrations r on r.id = c.registration_id
+     where r.round_id = $1 and r.status <> 'withdrawn'
+     group by c.group_id`,
+    [roundId],
+  );
   const pending = regs.filter((r) => r.status === 'pending');
   const { allocations, fill } = allocate(groups, pending);
   const suggestion = Object.fromEntries(allocations.map((a) => [a.id, a]));
-  return json({ round, groups, registrations: regs, suggestion, fill });
+  return json({
+    round, groups, registrations: regs, suggestion, fill,
+    demand: Object.fromEntries(demand.map((d) => [d.group_id, { first: d.first, second: d.second }])),
+  });
 }
 export { OPTIONS } from './_lib/http.js';

@@ -40,6 +40,7 @@ interface Data {
   registrations: Reg[];
   suggestion: Record<string, { groupIds: (string | null)[]; complete: boolean }>;
   fill: Record<string, number>;
+  demand: Record<string, { first: number; second: number }>;
 }
 
 const label = (g?: G) => (g ? `${WD_SHORT[g.weekday]} ${g.time}` : '–');
@@ -114,31 +115,64 @@ export function RegistrationsPage() {
 
       {data && (
         <>
-          <div className="card">
-            <h2>Platser per grupp med förslaget</h2>
-            <div className="fill-grid">
-              {data.groups.map((g) => {
-                const n = fill[g.id] ?? 0;
-                return (
-                  <div key={g.id} className="fill-item">
-                    <div className="row" style={{ justifyContent: 'space-between' }}>
-                      <span className="strong">{label(g)} <span className="muted">{g.place}</span></span>
-                      <span className={n < g.min_participants ? 'warn-text strong' : 'strong'}>{n}/{g.capacity}</span>
-                    </div>
-                    <div className="bar">
-                      <div className={`bar-fill ${n < g.min_participants ? 'low' : n >= g.capacity ? 'full' : ''}`} style={{ width: `${Math.min(100, (n / g.capacity) * 100)}%` }} />
-                      <div className="bar-min" style={{ left: `${(g.min_participants / g.capacity) * 100}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="card table-wrap">
+            <div className="pad-head">
+              <h2>Översikt per pass</h2>
+              <p className="muted small-text">
+                Max styr bara förslaget. Anmälan begränsas aldrig, och du kan alltid placera fler än max i listan nedan. Du har sista ordet.
+              </p>
             </div>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Pass</th>
+                  <th className="right">Sökt 1:a hand</th>
+                  <th className="right">Sökt 2:a hand</th>
+                  <th className="right">Max</th>
+                  <th style={{ width: '28%' }}>Placerade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.groups.map((g) => {
+                  const n = fill[g.id] ?? 0;
+                  const d = data.demand[g.id] ?? { first: 0, second: 0 };
+                  const over = n > g.capacity;
+                  return (
+                    <tr key={g.id}>
+                      <td className="strong nowrap">
+                        {label(g)} <span className="muted">{g.place}</span>
+                      </td>
+                      <td className={`right strong ${d.first > g.capacity ? 'danger-text' : ''}`}>{d.first}</td>
+                      <td className="right">{d.second}</td>
+                      <td className="right">
+                        <MaxInput group={g} onSaved={load} />
+                      </td>
+                      <td>
+                        <div className="row" style={{ justifyContent: 'space-between' }}>
+                          <span className={`strong ${over ? 'danger-text' : n < g.min_participants ? 'warn-text' : ''}`}>
+                            {n} av {g.capacity}
+                            {over ? ' (över max)' : n < g.min_participants ? ` (under ${g.min_participants})` : ''}
+                          </span>
+                        </div>
+                        <div className="bar">
+                          <div className={`bar-fill ${over ? 'full' : n < g.min_participants ? 'low' : ''}`} style={{ width: `${Math.min(100, (n / g.capacity) * 100)}%` }} />
+                          <div className="bar-min" style={{ left: `${Math.min(100, (g.min_participants / g.capacity) * 100)}%` }} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           <header className="page-head section">
             <div>
               <h2>Att fördela ({pending.length})</h2>
-              <p className="muted">Ordning: nuvarande deltagare med förtur först, sedan exakt anmälningstid. Ändra en plats i listan om du vill.</p>
+              <p className="muted">
+                Förslaget följer max per pass: nuvarande deltagare med förtur först, sedan exakt anmälningstid, och första- före andrahandsval.
+                Ändra fritt, även över max.
+              </p>
             </div>
             <button className="btn primary" disabled={!pending.length || busy} onClick={confirm}>
               Bekräfta alla och skicka besked
@@ -192,7 +226,9 @@ export function RegistrationsPage() {
                           >
                             <option value="">Väntelista</option>
                             {data.groups.map((g) => (
-                              <option key={g.id} value={g.id}>{label(g)} {g.place}</option>
+                              <option key={g.id} value={g.id}>
+                                {label(g)} {g.place} ({fill[g.id] ?? 0}/{g.capacity}{(fill[g.id] ?? 0) >= g.capacity && value !== g.id ? ', fullt' : ''})
+                              </option>
                             ))}
                           </select>
                         );
@@ -226,5 +262,36 @@ export function RegistrationsPage() {
         </>
       )}
     </div>
+  );
+}
+
+function MaxInput({ group, onSaved }: { group: G; onSaved: () => void }) {
+  const [value, setValue] = useState(String(group.capacity));
+  const [error, setError] = useState('');
+  useEffect(() => setValue(String(group.capacity)), [group.capacity]);
+  const save = async () => {
+    if (Number(value) === group.capacity) return;
+    setError('');
+    try {
+      await api('groups', { method: 'PUT', body: { id: group.id, capacity: Number(value) } });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+      setValue(String(group.capacity));
+    }
+  };
+  return (
+    <span>
+      <input
+        aria-label={`Max för ${label(group)}`}
+        className="max-input"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+        onBlur={save}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+      {error && <span className="error small-text"> {error}</span>}
+    </span>
   );
 }

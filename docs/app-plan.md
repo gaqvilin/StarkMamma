@@ -134,7 +134,7 @@ Det svåraste i början är **anmälningsrusningen**, som kräver att flera samt
 
 ## Kostnader
 
-- **Inga sms.** Inloggningen sker med e-post och kod, eller med Google och Facebook, och reservkanalen för notiser är e-post. Båda är gratis
+- **Inga betalda sms.** Inloggningen sker med e-post och kod, eller med Google och Facebook, och reservkanalen för notiser är e-post. Båda är gratis. Sms till dem som inte bekräftat ett inställt pass skickas från Emmas egen telefon, med alla mottagare och texten ifyllda, och kostar därför inget extra. Ska de skickas automatiskt från servern i stället behövs en sms-tjänst, till exempel 46elks för cirka 0,50 kr per sms
 - **Gratis att börja med:** Neon och Vercel (gratisnivåerna räcker för den här storleken), Resend för e-post (gratis upp till 3 000 mejl i månaden) och pushnotiser via Expo, Apple och Google
 - **Det som kostar:** Apple Developer (99 USD per år) och Google Play (25 USD en gång) när native-appen ska ut i butikerna
 

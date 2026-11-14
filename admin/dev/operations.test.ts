@@ -157,6 +157,7 @@ describe('bekräftelse av viktiga notiser', () => {
     let detail = await call('session', 'GET', emma, undefined, `?id=${s.id}`);
     expect(detail.data.notice).toMatchObject({ recipients: total, acknowledged: 0 });
     expect(detail.data.notice.missing).toContain('Sara Test');
+    expect(detail.data.notice.missing_people).toContainEqual({ name: 'Sara Test', phone: '0709990000' });
 
     expect((await call('my-notices', 'POST', sara, { id: n.id, acknowledge: true })).status).toBe(200);
     expect((await call('my-notices', 'GET', sara)).data.notices[0].acknowledged).toBe(true);
@@ -221,6 +222,26 @@ describe('ny omgång och anmälan', () => {
     const man = mine.data.groups.find((x: { weekday: number; time: string }) => x.weekday === 1 && x.time === '18.45').id;
     expect((await call('my-registration', 'POST', sara, { roundId: newRoundId, perWeek: 2, choices: [[tis, man], [tis]] })).status).toBe(400);
     expect((await call('my-registration', 'POST', sara, { roundId: newRoundId, perWeek: 2, choices: [[tis, man], [tor]], installments: true })).status).toBe(201);
+  });
+
+  it('Emma ser hur många som sökt varje pass i första och andra hand', async () => {
+    const regs = await call('registrations', 'GET', emma, undefined, `?roundId=${newRoundId}`);
+    const tis = regs.data.groups.find((g: { weekday: number; time: string }) => g.weekday === 2 && g.time === '18.45');
+    const man = regs.data.groups.find((g: { weekday: number; time: string }) => g.weekday === 1 && g.time === '18.45');
+    expect(regs.data.demand[tis.id]).toEqual({ first: 1, second: 0 });
+    expect(regs.data.demand[man.id]).toEqual({ first: 0, second: 1 });
+  });
+
+  it('max styr förslaget men begränsar inte anmälan, och Emma kan placera fler än max', async () => {
+    const regs = await call('registrations', 'GET', emma, undefined, `?roundId=${newRoundId}`);
+    const tis = regs.data.groups.find((g: { weekday: number; time: string }) => g.weekday === 2 && g.time === '18.45');
+    expect((await call('groups', 'PUT', emma, { id: tis.id, capacity: 0 })).status).toBe(400);
+    expect((await call('groups', 'PUT', emma, { id: tis.id, capacity: 1 })).status).toBe(200);
+    const after = await call('registrations', 'GET', emma, undefined, `?roundId=${newRoundId}`);
+    const saraReg = after.data.registrations.find((r: { email: string }) => r.email === 'sara@example.com');
+    expect(after.data.groups.find((g: { id: string }) => g.id === tis.id).capacity).toBe(1);
+    expect(after.data.suggestion[saraReg.id].groupIds).toContain(tis.id); // en plats kvar, Sara får den
+    expect((await call('groups', 'PUT', emma, { id: tis.id, capacity: 16 })).status).toBe(200);
   });
 
   it('efter förturen kan nya anmäla sig, och Emma bekräftar enligt förslaget', async () => {

@@ -1,5 +1,6 @@
 // Emmas vyer i mobilappen, kopplade till samma API som admin på datorn.
 import React, { useState } from 'react';
+import * as SMS from 'expo-sms';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { WD, api, dayLabel, shortDate } from '../api';
 import { useApi } from '../auth';
@@ -36,7 +37,10 @@ interface WeekSession {
   booked: number; attending: number; cancelled: number; queue: number;
 }
 interface Roster {
-  notice: { id: string; title: string; recipients: number; acknowledged: number; missing: string[] } | null;
+  notice: {
+    id: string; title: string; body: string; recipients: number; acknowledged: number; missing: string[];
+    missing_people: { name: string; phone: string | null }[];
+  } | null;
   session: WeekSession;
   roster: { id: string; name: string; phone: string | null; status: string; source: string }[];
   queue: { id: string; name: string }[];
@@ -218,6 +222,14 @@ function SessionDetail({ id, onChanged }: { id: string; onChanged: () => void })
               style={{ alignSelf: 'flex-start', marginTop: 6 }}
             />
           ) : null}
+          {data.notice.missing.length ? (
+            <Button
+              small
+              title="Sms till dem som inte bekräftat"
+              onPress={() => smsUnconfirmed(data.notice!.missing_people, `StarkMamma: ${data.notice!.body} Bekräfta gärna i appen. /Emma`, toast)}
+              style={{ alignSelf: 'flex-start', marginTop: 6 }}
+            />
+          ) : null}
         </Card>
       ) : null}
       {data.roster.map((r) => {
@@ -239,6 +251,24 @@ function SessionDetail({ id, onChanged }: { id: string; onChanged: () => void })
   );
 }
 
+/**
+ * Öppnar telefonens sms med alla som inte bekräftat som mottagare och texten ifylld.
+ * Skickas från Emmas eget abonnemang, så det kostar inget extra.
+ */
+async function smsUnconfirmed(
+  people: { name: string; phone: string | null }[],
+  text: string,
+  toast: (t: { title: string; body?: string }) => void,
+) {
+  const numbers = people.map((p) => p.phone).filter(Boolean) as string[];
+  const without = people.filter((p) => !p.phone).map((p) => p.name);
+  if (!numbers.length) return toast({ title: 'Inga mobilnummer', body: 'Ingen av dem har ett mobilnummer registrerat.' });
+  if (!(await SMS.isAvailableAsync().catch(() => false)))
+    return toast({ title: 'Sms finns inte på den här enheten', body: `Nummer: ${numbers.join(', ')}` });
+  await SMS.sendSMSAsync(numbers, text);
+  if (without.length) toast({ title: 'Saknar mobilnummer', body: without.join(', ') });
+}
+
 // ------------------------------------------------------------------ Anmälningar
 
 interface RoundItem { id: string; name: string; registration_opens_at: string | null; registrations: number }
@@ -247,6 +277,7 @@ interface RegData {
   registrations: { id: string; name: string; per_week: number; status: string; priority: boolean; existing: boolean; created_at: string }[];
   suggestion: Record<string, { groupIds: (string | null)[] }>;
   fill: Record<string, number>;
+  demand: Record<string, { first: number; second: number }>;
 }
 
 export function RegistrationsScreen() {
@@ -257,7 +288,16 @@ export function RegistrationsScreen() {
   if (!rounds.data) return <Loading error={rounds.error} />;
   if (!round) return <View><H1>Anmälningar</H1><Card><P>Ingen omgång har anmälan öppen. Skapa nästa omgång i admin på datorn.</P></Card></View>;
   if (!regs.data) return <Loading error={regs.error} />;
-  const { groups, registrations, suggestion, fill } = regs.data;
+  const { groups, registrations, suggestion, fill, demand } = regs.data;
+  const setMax = async (id: string, capacity: number) => {
+    if (capacity < 1) return;
+    try {
+      await api('groups', { method: 'PUT', body: { id, capacity } });
+      regs.reload();
+    } catch (e) {
+      toast({ title: 'Det gick inte', body: (e as Error).message });
+    }
+  };
   const pending = registrations.filter((r) => r.status === 'pending');
   const byId = new Map(groups.map((g) => [g.id, g]));
 
@@ -266,18 +306,29 @@ export function RegistrationsScreen() {
       <H1>Anmälningar</H1>
       <P muted style={{ marginBottom: 12 }}>{round.name} · {registrations.length} anmälda</P>
       <Card>
-        <H2>Platser med förslaget</H2>
-        {groups.map((g) => (
-          <View key={g.id} style={{ marginBottom: 10 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: '600' }}>{WD[g.weekday]} {g.time} · {g.place}</Text>
-              <Text style={{ fontWeight: '700', color: fill[g.id] < g.min_participants ? colors.warn : colors.muted }}>
-                {fill[g.id]}/{g.capacity}
+        <H2>Översikt per pass</H2>
+        <P muted style={{ fontSize: 13, marginBottom: 10 }}>Max styr bara förslaget. Alla kan anmäla sig, och du kan placera fler i admin på datorn.</P>
+        {groups.map((g) => {
+          const d = demand[g.id] ?? { first: 0, second: 0 };
+          return (
+            <View key={g.id} style={{ marginBottom: 12 }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Text style={{ fontWeight: '700' }}>{WD[g.weekday]} {g.time} · {g.place}</Text>
+                <Row>
+                  <Button small variant="secondary" title="−" onPress={() => setMax(g.id, g.capacity - 1)} />
+                  <Text style={{ fontWeight: '700', minWidth: 52, textAlign: 'center' }}>max {g.capacity}</Text>
+                  <Button small variant="secondary" title="+" onPress={() => setMax(g.id, g.capacity + 1)} />
+                </Row>
+              </Row>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+                Sökt 1:a hand <Text style={{ fontWeight: '800', color: d.first > g.capacity ? colors.danger : colors.ink }}>{d.first}</Text>
+                {'  ·  '}2:a hand <Text style={{ fontWeight: '800', color: colors.ink }}>{d.second}</Text>
+                {'  ·  '}placerade <Text style={{ fontWeight: '800', color: colors.ink }}>{fill[g.id]}</Text>
               </Text>
-            </Row>
-            <Bar value={fill[g.id]} max={g.capacity} min={g.min_participants} />
-          </View>
-        ))}
+              <Bar value={fill[g.id]} max={g.capacity} min={g.min_participants} />
+            </View>
+          );
+        })}
       </Card>
       <H2>Att bekräfta ({pending.length})</H2>
       {pending.slice(0, 50).map((r) => (

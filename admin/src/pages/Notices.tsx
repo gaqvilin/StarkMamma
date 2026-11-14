@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Group, api, groupLabel } from '../api';
+import { SmsBox } from '../sms';
 
 interface Notice {
   id: string;
@@ -232,6 +233,7 @@ export function NoticeDrawer({ id, onClose }: { id: string; onClose: () => void 
             </button>
           )}
           {msg && <p className="ok-text">{msg}</p>}
+          {missing.length > 0 && <SmsBox people={missing} text={`StarkMamma: ${notice.body} Bekräfta gärna i appen. /Emma`} />}
         </div>
       )}
       <table className="table compact">

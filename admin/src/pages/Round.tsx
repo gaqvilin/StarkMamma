@@ -92,7 +92,10 @@ export function RoundPage() {
           <p className="big">
             {total} <span className="muted">av {cap} platser</span>
           </p>
-          <p className="muted">Grupper under minimiantalet markeras med gult. Minst {groups[0]?.min_participants ?? 14} behövs för att en grupp ska köras.</p>
+          <p className="muted">
+            Grupper under minimiantalet markeras med gult. Minst {groups[0]?.min_participants ?? 14} behövs för att en grupp ska köras. Max kan ändras i
+            tabellen. Det styr förslag och bokningar i appen, men du kan alltid lägga till fler själv.
+          </p>
         </div>
       </div>
 
@@ -121,8 +124,9 @@ export function RoundPage() {
                       <div className="bar-min" style={{ left: `${(g.min_participants / g.capacity) * 100}%` }} />
                     </div>
                   </td>
-                  <td className={`right strong ${low ? 'warn-text' : ''}`}>
-                    {g.members}/{g.capacity}
+                  <td className={`right strong nowrap ${low ? 'warn-text' : ''}`}>
+                    {g.members} /{' '}
+                    <MaxCell group={g} onSaved={() => api<RoundData>(selected ? `round?id=${selected}` : 'round').then(setData)} />
                   </td>
                 </tr>
               );
@@ -239,5 +243,26 @@ function NewRound({
         <button className="btn primary" type="submit">Skapa omgång</button>
       </form>
     </aside>
+  );
+}
+
+function MaxCell({ group, onSaved }: { group: Group; onSaved: () => void }) {
+  const [value, setValue] = useState(String(group.capacity));
+  useEffect(() => setValue(String(group.capacity)), [group.capacity]);
+  return (
+    <input
+      aria-label="Max"
+      className="max-input"
+      inputMode="numeric"
+      value={value}
+      onChange={(e) => setValue(e.target.value.replace(/\D/g, ''))}
+      onBlur={async () => {
+        if (Number(value) !== group.capacity && Number(value) > 0) {
+          await api('groups', { method: 'PUT', body: { id: group.id, capacity: Number(value) } });
+          onSaved();
+        } else setValue(String(group.capacity));
+      }}
+      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+    />
   );
 }

@@ -42,7 +42,11 @@ export async function GET(request: Request) {
        (select count(*) from notice_recipients r where r.notice_id = n.id)::int as recipients,
        (select count(*) from notice_recipients r where r.notice_id = n.id and r.acknowledged_at is not null)::int as acknowledged,
        coalesce((select json_agg(p.name order by p.name) from notice_recipients r join people p on p.id = r.person_id
-                 where r.notice_id = n.id and r.acknowledged_at is null), '[]') as missing
+                 where r.notice_id = n.id and r.acknowledged_at is null), '[]') as missing,
+       coalesce((select json_agg(json_build_object('name', p.name, 'phone', p.phone) order by p.name)
+                 from notice_recipients r join people p on p.id = r.person_id
+                 where r.notice_id = n.id and r.acknowledged_at is null), '[]') as missing_people,
+       n.body
      from notices n where n.audience = $1 and n.requires_ack order by n.created_at desc limit 1`,
     [`session:${id}`],
   );

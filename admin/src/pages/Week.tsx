@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Person, Session, addDays, api, dayLabel, isoWeek, mondayOf, shortDate } from '../api';
+import { SmsBox } from '../sms';
 
 interface Roster {
-  notice: { id: string; title: string; sent_at: string; recipients: number; acknowledged: number; missing: string[] } | null;
+  notice: {
+    id: string; title: string; body: string; sent_at: string; recipients: number; acknowledged: number; missing: string[];
+    missing_people: { name: string; phone: string | null }[];
+  } | null;
   session: Session;
   roster: { id: string; name: string; phone: string | null; status: string; source: string }[];
   queue: { id: string; name: string; phone: string | null }[];
@@ -344,6 +348,7 @@ function AckBox({ notice, onReminded }: { notice: NonNullable<Roster['notice']>;
         </button>
       )}
       {msg && <p className="ok-text">{msg}</p>}
+      {!done && <SmsBox people={notice.missing_people} text={`StarkMamma: ${notice.body} Bekräfta gärna i appen. /Emma`} />}
     </div>
   );
 }
