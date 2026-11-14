@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   if (!description) return bad('Beskrivning saknas');
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return bad('Ogiltigt belopp');
   if (b.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(b.dueOn)) return bad('Ogiltigt datum');
-  const kind = ['round', 'installment', 'drop_in', 'punch_card', 'event', 'product', 'tab'].includes(b.kind ?? '') ? b.kind : 'product';
+  const kind = ['round', 'installment', 'drop_in', 'punch_card', 'event', 'product', 'tab', 'online'].includes(b.kind ?? '') ? b.kind : 'product';
   const q = await db();
   const [c] = await q<{ id: string }>(
     `insert into charges (person_id, description, amount, due_on, kind) values ($1, $2, $3, $4::date, $5) returning id`,

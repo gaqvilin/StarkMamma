@@ -2,7 +2,9 @@ import type React from 'react';
 import { FormEvent, useEffect, useState } from 'react';
 import { api } from './api';
 import { FacebookMark, GoogleMark } from './brand';
+import { ChallengesPage } from './pages/Challenges';
 import { NoticesPage } from './pages/Notices';
+import { OnlinePage } from './pages/Online';
 import { PaymentsPage } from './pages/Payments';
 import { RegistrationsPage } from './pages/Registrations';
 import { PeoplePage } from './pages/People';
@@ -15,6 +17,8 @@ const PAGES = [
   { key: 'registrations', label: 'Anmälan', Page: RegistrationsPage },
   { key: 'payments', label: 'Betalningar', Page: PaymentsPage },
   { key: 'round', label: 'Omgångar', Page: RoundPage },
+  { key: 'online', label: 'Online', Page: OnlinePage },
+  { key: 'challenges', label: 'Utmaningar', Page: ChallengesPage },
   { key: 'notices', label: 'Notiser', Page: NoticesPage },
 ] as const;
 

@@ -10,6 +10,8 @@ Emmas del av StarkMamma, en webbapp för datorn. Deltagarna använder mobilappen
 - **Anmälan:** en översikt per pass visar hur många som sökt i första och andra hand, max per pass (kan ändras direkt) och hur många som är placerade. Max styr bara förslaget och begränsar aldrig anmälan. Emma kan placera fler än max, och hennes val gäller. Därunder finns förslaget på fördelning för nästa omgång. Nuvarande deltagare med förtur kommer först, sedan går ordningen efter exakt anmälningstid, och första- och andrahandsval används. Emma kan justera enskilda personer och sedan bekräfta alla. Då skapas grupper och betalningskrav, nya konton aktiveras och alla får en notis
 - **Betalningar:** obetalda och betalda betalningar. De som tryckt "Jag har swishat" i appen ligger överst. Emma markerar betalt, vilket ger ett kvittonummer, kan ångra, skapa nya betalningskrav och påminna alla som inte betalat. Ett 10-kort skapas när köpet är betalt
 - **Omgångar:** priser och beläggning, och ny omgång. Grupperna kopieras från en tidigare omgång och passen skapas automatiskt. Uppehållsveckor hoppas över, och anmälan och förtur kan schemaläggas
+- **Online:** onlineprogram med pris och period. Emma lägger in pass i text och/eller som film, via en länk till olistad YouTube eller Vimeo, och väljer från vilket datum varje pass syns. Deltagaren köper programmet i appen, och när betalningen markeras som betald får hon tillgång. Emma kan också ge och ta bort tillgång för hand. Hon ser vem som har tillgång, hur många som gjort varje pass och vilka som väntar på att betala
+- **Utmaningar:** bingo och andra utmaningar med rutor, period och vinst. Deltagarna bockar av rutor med datum i appen. Emma ser hur långt alla har kommit och lottar en vinnare bland dem med full bricka, och vinnaren får en notis
 - **Notiser:** till alla, en grupp eller alla som inte betalat, med valfri informationssida och förhandsvisning
 - **Bekräftelse:** en notis kan kräva att mottagaren trycker "Jag har läst". Det gäller alltid för inställda och flyttade pass, och för andra notiser, till exempel event, kryssar Emma i det själv. Emma ser vem som har bekräftat, läst eller inte läst, både under Notiser och direkt på passet i Veckan. Hon kan påminna dem som inte bekräftat, eller skicka ett sms till dem från sin egen telefon (ingen extra kostnad). I appen öppnas Meddelanden med alla mottagare och texten ifyllda, och på datorn kan hon kopiera nummer och text. I appen ligger obekräftade notiser överst på alla flikar tills de är bekräftade
 
@@ -37,7 +39,7 @@ Samma upplägg som padelappen: Vite och React i `src/`, API som Vercel-funktione
 ```bash
 npm install
 npm run dev:demo   # påhittad demodata i minnet (PGlite); logga in med starkmammavarberg@gmail.com, koden visas på skärmen
-npm test           # 36 tester av API:et och reglerna mot demodatabasen
+npm test           # 44 tester av API:et och reglerna mot demodatabasen
 ```
 
 Mot riktiga databasen: sätt miljövariablerna nedan och kör `npm run dev`.

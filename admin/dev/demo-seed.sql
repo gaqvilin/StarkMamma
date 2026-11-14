@@ -111,3 +111,39 @@ from registration_choices c join groups g on g.id = c.group_id
 join lateral (select id from groups x where x.round_id = g.round_id and x.weekday = g.weekday and x.id <> g.id order by x.start_time desc limit 1) alt on true
 where c.rank = 1
 on conflict do nothing;
+
+-- Onlineträning och bingo.
+insert into online_programs (name, description, price, starts_on, ends_on, status)
+values ('Online höst 2026', 'Korta, effektiva pass att köra hemma. Ett nytt pass varje vecka, i text och film.', 499, date '2026-11-01', date '2026-12-20', 'open'),
+       ('Mammaträning online', 'För dig som vill starta upp träningen hemma efter förlossningen.', 399, date '2026-11-01', date '2026-12-20', 'open');
+insert into workouts (program_id, title, body, video_url, duration_min, publish_on, sort)
+select p.id, w.title, w.body, w.video, w.min, w.pub, w.sort
+from online_programs p, (values
+  ('Pass 1: Helkropp med egen kropp', E'Värm upp 5 min med rask gång eller jogg på stället.\n\nKör 5 varv, 45 sek arbete och 15 sek vila:\n- Djupa knäböj\n- Utfallssteg framåt, vartannat ben\n- Burpees\n- Armhävningar\n- V-ups\n\nVila en minut mellan varven.', null, 25, date '2026-11-02', 1),
+  ('Pass 2: Träna med mig, 30 min', E'Filmen visar hela passet. Ta fram en matta och en vattenflaska.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 30, date '2026-11-09', 2),
+  ('Pass 3: EMOM 35 minuter', E'Sätt en timer på 35 enminutersintervaller.\n\nMinut 1: 25 knäböj\nMinut 2: 15–20 armhävningar\nMinut 3: 10–15 burpees\nMinut 4: 20–25 situps\nMinut 5: 10–15 per sida bulgariska utfall\nMinut 6: 45 sek höga knän\nMinut 7: vila\n\nKör totalt 5 varv.', null, 35, date '2026-11-16', 3)
+) as w(title, body, video, min, pub, sort)
+where p.name = 'Online höst 2026';
+insert into online_access (program_id, person_id, source)
+select p.id, x.id, 'paid' from online_programs p, (select id from people where role = 'participant' and status = 'active' order by name limit 18) x
+where p.name = 'Online höst 2026';
+insert into workout_done (workout_id, person_id)
+select w.id, a.person_id from workouts w join online_access a on a.program_id = w.program_id
+where w.sort = 1 and abs(hashtext(a.person_id::text)) % 3 <> 0;
+
+insert into challenges (name, description, prize, starts_on, ends_on)
+values ('HÖST-bingo', 'Gör alla aktiviteter och bocka av dem med datum. Bara ett kryss per aktivitet.',
+        'Två 5-gångerskort på crosstrainingen och en egen stund med Emma', date '2026-11-07', date '2026-11-30');
+insert into challenge_tasks (challenge_id, sort, text)
+select c.id, t.sort, t.text from challenges c, (values
+  (0, 'Promenera minst 8 km eller jogga minst 3 km'), (1, 'Promenera eller spring en ny vandringsled i Halland'),
+  (2, 'Simma minst 20 minuter'), (3, 'Cykla minst 10 km'), (4, 'Ta ett höstbad i havet eller en sjö'),
+  (5, 'Vila stilla och tyst minst 20 min'), (6, '20 minuter: 25 knäböj, 20 utfall, 15 v-ups, 10 armhävningar, 5 burpees'),
+  (7, 'Promenera minst 8 km eller jogga minst 3 km'), (8, '45/15 i 5 varv: knäböj, utfall, burpees, armhävningar, v-ups'),
+  (9, 'EMOM 35 minuter'), (10, 'Intervaller: 6–10 x 1 min löpning med 1 min gåvila'), (11, '23 minuters intervaller, 4 varv')
+) as t(sort, text) where c.name = 'HÖST-bingo';
+insert into challenge_checks (task_id, person_id, done_on)
+select t.id, x.id, date '2026-11-08' + (t.sort % 5)
+from challenge_tasks t, (select id, row_number() over (order by name) as rn from people where role = 'participant' and status = 'active' order by name limit 12) x
+where t.sort < 12 - x.rn
+on conflict do nothing;

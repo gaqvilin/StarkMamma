@@ -8,6 +8,7 @@ import { BellIcon } from './src/icons';
 import { onNotificationOpened, registerForPush } from './src/push';
 import { LoginScreen, PendingScreen, ProfileScreen } from './src/screens/Login';
 import { BookScreen, HomeScreen, ImportantNotices, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
+import { OnlineScreen } from './src/screens/Online';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
 import { colors } from './src/theme';
 import { ToastProvider } from './src/toast';
@@ -19,6 +20,7 @@ const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentTy
     { key: 'home', label: 'Hem', Screen: HomeScreen },
     { key: 'book', label: 'Boka', Screen: BookScreen },
     { key: 'signup', label: 'Anmälan', Screen: SignupScreen },
+    { key: 'online', label: 'Online', Screen: OnlineScreen },
     { key: 'pay', label: 'Betala', Screen: PayScreen },
   ],
   tränare: [
