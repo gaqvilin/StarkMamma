@@ -36,7 +36,17 @@ export async function GET(request: Request) {
      where w.session_id = $1 order by w.created_at`,
     [id],
   );
-  return json({ session, roster, queue });
+  const [notice] = await q<{ id: string }>(
+    `select n.id, n.title, n.requires_ack,
+       to_char(n.created_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD HH24.MI') as sent_at,
+       (select count(*) from notice_recipients r where r.notice_id = n.id)::int as recipients,
+       (select count(*) from notice_recipients r where r.notice_id = n.id and r.acknowledged_at is not null)::int as acknowledged,
+       coalesce((select json_agg(p.name order by p.name) from notice_recipients r join people p on p.id = r.person_id
+                 where r.notice_id = n.id and r.acknowledged_at is null), '[]') as missing
+     from notices n where n.audience = $1 and n.requires_ack order by n.created_at desc limit 1`,
+    [`session:${id}`],
+  );
+  return json({ session, roster, queue, notice: notice ?? null });
 }
 
 type Update = { id?: string; date?: string; time?: string; place?: string; cancelled?: boolean; note?: string; notify?: boolean };
@@ -77,13 +87,16 @@ export async function PUT(request: Request) {
       `with s as (select * from sessions where id = $1), ${ROSTER} select person_id from roster where status in ('booked', 'attending')`,
       [u.id],
     );
-    const label = `${before.date.slice(8)}/${Number(before.date.slice(5, 7))} ${before.time}`;
+    const label = `${Number(before.date.slice(8))}/${Number(before.date.slice(5, 7))} ${before.time}`;
     const title = status === 'cancelled' ? `Inställt pass ${label}` : moved ? `Ändrad tid: passet ${label}` : `Ändrad lokal ${label}`;
     const text =
       status === 'cancelled'
         ? `Passet ${label} är tyvärr inställt.${u.note ? ' ' + u.note : ''}`
-        : `Passet körs ${date.slice(8)}/${Number(date.slice(5, 7))} kl ${time} i ${place}.${u.note ? ' ' + u.note : ''}`;
-    notified = (await sendNotice(q, { title, body: text, audience: `session:${u.id}` }, people.map((p) => p.person_id))).recipients;
+        : `Passet körs ${Number(date.slice(8))}/${Number(date.slice(5, 7))} kl ${time} i ${place}.${u.note ? ' ' + u.note : ''}`;
+    // Inställda och flyttade pass kräver att deltagarna bekräftar att de sett beskedet.
+    notified = (
+      await sendNotice(q, { title, body: text, audience: `session:${u.id}`, requiresAck: true }, people.map((p) => p.person_id))
+    ).recipients;
   }
   return json({ ok: true, notified });
 }

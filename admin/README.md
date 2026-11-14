@@ -11,6 +11,7 @@ Emmas del av StarkMamma, en webbapp för datorn. Deltagarna använder mobilappen
 - **Betalningar:** obetalda och betalda betalningar. Emma markerar betalt, vilket ger ett kvittonummer, kan ångra, skapa nya betalningskrav och påminna alla som inte betalat. Ett 10-kort skapas när köpet är betalt
 - **Omgångar:** priser och beläggning, och ny omgång. Grupperna kopieras från en tidigare omgång och passen skapas automatiskt. Uppehållsveckor hoppas över, och anmälan och förtur kan schemaläggas
 - **Notiser:** till alla, en grupp eller alla som inte betalat, med valfri informationssida och förhandsvisning
+- **Bekräftelse:** en notis kan kräva att mottagaren trycker "Jag har läst". Det gäller alltid för inställda och flyttade pass, och för andra notiser, till exempel event, kryssar Emma i det själv. Emma ser vem som har bekräftat, läst eller inte läst, både under Notiser och direkt på passet i Veckan, och kan påminna dem som inte bekräftat. I appen ligger obekräftade notiser överst på alla flikar tills de är bekräftade
 
 Samma API används av mobilappen (`/api/my-*`, `/api/bookable`, `/api/push-token`). Notiser levereras som pushnotis via Expo Push och annars som e-post via Resend. Varje dag kl 17 skickar `/api/cron-reminders` frågan "Kommer du imorgon?" och påminnelser om betalningar.
 
@@ -36,7 +37,7 @@ Samma upplägg som padelappen: Vite och React i `src/`, API som Vercel-funktione
 ```bash
 npm install
 npm run dev:demo   # påhittad demodata i minnet (PGlite); logga in med starkmammavarberg@gmail.com, koden visas på skärmen
-npm test           # 30 tester av API:et och reglerna mot demodatabasen
+npm test           # 33 tester av API:et och reglerna mot demodatabasen
 ```
 
 Mot riktiga databasen: sätt miljövariablerna nedan och kör `npm run dev`.

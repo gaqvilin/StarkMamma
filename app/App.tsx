@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './src/auth';
 import { BellIcon } from './src/icons';
 import { onNotificationOpened, registerForPush } from './src/push';
 import { LoginScreen, PendingScreen, ProfileScreen } from './src/screens/Login';
-import { BookScreen, HomeScreen, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
+import { BookScreen, HomeScreen, ImportantNotices, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
 import { colors } from './src/theme';
 import { ToastProvider } from './src/toast';
@@ -58,7 +58,7 @@ function Shell({ role }: { role: Role }) {
   const [openNotice, setOpenNotice] = useState<Notice | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
   const current = tabs.find((t) => t.key === tab) ?? tabs[0];
-  const unread = notices.filter((n) => !n.read).length;
+  const unread = notices.filter((n) => !n.read || (n.requires_ack && !n.acknowledged)).length;
 
   const loadNotices = useCallback(
     () => api<{ notices: Notice[] }>('my-notices').then((r) => setNotices(r.notices)).catch(() => {}),
@@ -80,6 +80,12 @@ function Shell({ role }: { role: Role }) {
       setView('info');
     } else setView('inbox');
     toTop();
+  };
+  const ack = (n: Notice) => {
+    api('my-notices', { method: 'POST', body: { id: n.id, acknowledge: true } }).catch(() => {});
+    const done = { ...n, read: true, acknowledged: true };
+    setNotices((all) => all.map((x) => (x.id === n.id ? done : x)));
+    setOpenNotice((o) => (o?.id === n.id ? done : o));
   };
   const openInbox = () => {
     setView('inbox');
@@ -133,11 +139,14 @@ function Shell({ role }: { role: Role }) {
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
         {view === 'info' && openNotice ? (
-          <InfoPageScreen notice={openNotice} onBack={() => setView('inbox')} />
+          <InfoPageScreen notice={openNotice} onBack={() => setView('inbox')} onAck={ack} />
         ) : view === 'inbox' ? (
-          <InboxScreen notices={notices} onOpen={open} />
+          <InboxScreen notices={notices} onOpen={open} onAck={ack} />
         ) : (
-          <Screen key={tab} />
+          <>
+            {role === 'deltagare' ? <ImportantNotices notices={notices} onOpen={open} onAck={ack} /> : null}
+            <Screen key={tab} />
+          </>
         )}
         {role === 'deltagare' && view === 'tabs' && current.key === 'home' ? (
           <Pressable onPress={signOut} accessibilityRole="button" style={{ alignSelf: 'center', padding: 16 }}>

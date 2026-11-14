@@ -36,6 +36,7 @@ interface WeekSession {
   booked: number; attending: number; cancelled: number; queue: number;
 }
 interface Roster {
+  notice: { id: string; title: string; recipients: number; acknowledged: number; missing: string[] } | null;
   session: WeekSession;
   roster: { id: string; name: string; phone: string | null; status: string; source: string }[];
   queue: { id: string; name: string }[];
@@ -199,6 +200,26 @@ function SessionDetail({ id, onChanged }: { id: string; onChanged: () => void })
         )}
         {s.status === 'cancelled' && <Button small variant="secondary" title="Kör passet ändå" onPress={() => update({ cancelled: false }, 'Passet körs')} />}
       </Row>
+      {data.notice ? (
+        <Card style={{ backgroundColor: data.notice.acknowledged >= data.notice.recipients ? colors.okSoft : colors.warnSoft, borderWidth: 0 }}>
+          <Text style={{ fontWeight: '700' }}>
+            {data.notice.acknowledged} av {data.notice.recipients} har bekräftat
+          </Text>
+          {data.notice.missing.length ? <P muted style={{ fontSize: 13 }}>Inte bekräftat: {data.notice.missing.join(', ')}</P> : null}
+          {data.notice.missing.length ? (
+            <Button
+              small
+              variant="secondary"
+              title="Påminn dem"
+              onPress={async () => {
+                const r = await api<{ reminded: number }>('notice', { method: 'POST', body: { id: data.notice!.id, action: 'remind' } });
+                toast({ title: 'Påminnelse skickad', body: `Till ${r.reminded} personer.` });
+              }}
+              style={{ alignSelf: 'flex-start', marginTop: 6 }}
+            />
+          ) : null}
+        </Card>
+      ) : null}
       {data.roster.map((r) => {
         const [label, tone] = ST[r.status] ?? [r.status, 'neutral'];
         const cancelled = r.status.startsWith('cancelled');
@@ -316,6 +337,7 @@ export function PushScreen() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [withPage, setWithPage] = useState(false);
+  const [requireAck, setRequireAck] = useState(false);
   const [heading, setHeading] = useState('');
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
@@ -366,6 +388,15 @@ export function PushScreen() {
           </View>
         )}
       </Card>
+      <Card>
+        <Row style={{ justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <H2>Kräv bekräftelse</H2>
+            <P muted>Mottagarna trycker "Jag har läst", och du ser vilka som gjort det.</P>
+          </View>
+          <Chip label={requireAck ? 'På' : 'Av'} active={requireAck} onPress={() => setRequireAck(!requireAck)} />
+        </Row>
+      </Card>
       <Button
         title="Skicka"
         disabled={!title || !body || (withPage && (!heading || !text))}
@@ -373,10 +404,11 @@ export function PushScreen() {
           try {
             const r = await api<{ recipients: number }>('notices', {
               method: 'POST',
-              body: { audience, title, body, page: withPage ? { heading, text, link } : undefined },
+              body: { audience, title, body, requireAck, page: withPage ? { heading, text, link } : undefined },
             });
             toast({ title: 'Notisen är skickad', body: `Till ${r.recipients} personer.` });
             use({ label: '', title: '', body: '' });
+            setRequireAck(false);
           } catch (e) {
             toast({ title: 'Det gick inte', body: (e as Error).message });
           }

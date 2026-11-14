@@ -7,14 +7,15 @@ import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
 import { sendNotice } from './_lib/notify.js';
 
-type Input = { title?: string; body?: string; audience?: string; page?: { heading?: string; text?: string; link?: string } };
+type Input = { title?: string; body?: string; audience?: string; requireAck?: boolean; page?: { heading?: string; text?: string; link?: string } };
 
 export async function GET(request: Request) {
   const denied = await requireTrainer(request);
   if (denied) return denied;
   const q = await db();
   const notices = await q(
-    `select n.id, n.title, n.body, n.audience, n.page_heading, n.page_text, n.page_link,
+    `select n.id, n.title, n.body, n.audience, n.page_heading, n.page_text, n.page_link, n.requires_ack,
+       (select count(*) from notice_recipients r where r.notice_id = n.id and r.acknowledged_at is not null)::int as acknowledged,
        to_char(n.created_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD HH24.MI') as sent_at,
        (select count(*) from notice_recipients r where r.notice_id = n.id)::int as recipients,
        (select count(*) from notice_recipients r where r.notice_id = n.id and r.read_at is not null)::int as read
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
   );
   const n = await sendNotice(
     q,
-    { title, body: text, audience, page: heading && pageText ? { heading, text: pageText, link } : null },
+    { title, body: text, audience, page: heading && pageText ? { heading, text: pageText, link } : null, requiresAck: !!input.requireAck },
     people.map((p) => p.id),
   );
   return json({ id: n.id, recipients: n.recipients }, 201);

@@ -10,6 +10,8 @@ interface Notice {
   sent_at: string;
   recipients: number;
   read: number;
+  requires_ack: boolean;
+  acknowledged: number;
 }
 
 export function NoticesPage() {
@@ -19,6 +21,8 @@ export function NoticesPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [withPage, setWithPage] = useState(false);
+  const [requireAck, setRequireAck] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [heading, setHeading] = useState('');
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
@@ -48,12 +52,13 @@ export function NoticesPage() {
     try {
       const r = await api<{ recipients: number }>('notices', {
         method: 'POST',
-        body: { title, body, audience, page: withPage ? { heading, text, link } : undefined },
+        body: { title, body, audience, requireAck, page: withPage ? { heading, text, link } : undefined },
       });
       setStatus({ ok: `Notisen är sparad till ${r.recipients} mottagare.` });
       setTitle('');
       setBody('');
       setWithPage(false);
+      setRequireAck(false);
       setHeading('');
       setText('');
       setLink('');
@@ -66,7 +71,8 @@ export function NoticesPage() {
   };
 
   return (
-    <div>
+    <div className={openId ? 'with-drawer' : ''}>
+      {openId && <NoticeDrawer id={openId} onClose={() => setOpenId(null)} />}
       <header className="page-head">
         <div>
           <h1>Notiser</h1>
@@ -105,6 +111,10 @@ export function NoticesPage() {
               <input id="n-link" type="url" placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
             </>
           )}
+          <label className="toggle">
+            <input type="checkbox" checked={requireAck} onChange={(e) => setRequireAck(e.target.checked)} />
+            Mottagarna ska bekräfta att de läst (du ser vilka som bekräftat)
+          </label>
           {status.error && <p className="error">{status.error}</p>}
           {status.ok && <p className="ok-text">{status.ok}</p>}
           <button className="btn primary" disabled={sending} type="submit">
@@ -140,11 +150,12 @@ export function NoticesPage() {
               <th>Notis</th>
               <th>Mottagare</th>
               <th className="right">Lästa</th>
+              <th className="right">Bekräftat</th>
             </tr>
           </thead>
           <tbody>
             {(history ?? []).map((n) => (
-              <tr key={n.id}>
+              <tr key={n.id} className="clickable" onClick={() => setOpenId(n.id)}>
                 <td className="muted nowrap">{n.sent_at}</td>
                 <td>
                   <div className="strong">{n.title}</div>
@@ -155,6 +166,15 @@ export function NoticesPage() {
                 <td className="right">
                   {n.read}/{n.recipients}
                 </td>
+                <td className="right nowrap">
+                  {n.requires_ack ? (
+                    <span className={`chip ${n.acknowledged >= n.recipients ? 'ok' : 'warn'}`}>
+                      {n.acknowledged}/{n.recipients}
+                    </span>
+                  ) : (
+                    <span className="muted">–</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -162,5 +182,80 @@ export function NoticesPage() {
         {history?.length === 0 && <p className="muted pad">Inga notiser skickade än.</p>}
       </div>
     </div>
+  );
+}
+
+interface Recipient {
+  id: string;
+  name: string;
+  phone: string | null;
+  delivered_via: string | null;
+  read_at: string | null;
+  acknowledged_at: string | null;
+  reminded_at: string | null;
+}
+
+export function NoticeDrawer({ id, onClose }: { id: string; onClose: () => void }) {
+  const [data, setData] = useState<{ notice: { title: string; body: string; sent_at: string; requires_ack: boolean }; recipients: Recipient[] } | null>(null);
+  const [msg, setMsg] = useState('');
+  const load = () => api<typeof data>(`notice?id=${id}`).then(setData);
+  useEffect(() => {
+    setData(null);
+    setMsg('');
+    load();
+  }, [id]);
+  if (!data) return <aside className="drawer"><p className="muted">Hämtar…</p></aside>;
+  const { notice, recipients } = data;
+  const acked = recipients.filter((r) => r.acknowledged_at).length;
+  const missing = recipients.filter((r) => !r.acknowledged_at);
+  return (
+    <aside className="drawer">
+      <button className="btn close" onClick={onClose}>Stäng</button>
+      <h2>{notice.title}</h2>
+      <p className="muted">Skickad {notice.sent_at}</p>
+      <p>{notice.body}</p>
+      {notice.requires_ack && (
+        <div className={`card ack ${missing.length ? 'warn' : 'ok'}`}>
+          <strong>
+            {acked} av {recipients.length} har bekräftat
+          </strong>
+          {missing.length > 0 && (
+            <button
+              className="btn small"
+              onClick={async () => {
+                const r = await api<{ reminded: number }>('notice', { method: 'POST', body: { id, action: 'remind' } });
+                setMsg(`Påminnelse skickad till ${r.reminded}.`);
+                load();
+              }}
+            >
+              Påminn {missing.length} som inte bekräftat
+            </button>
+          )}
+          {msg && <p className="ok-text">{msg}</p>}
+        </div>
+      )}
+      <table className="table compact">
+        <tbody>
+          {recipients.map((r) => (
+            <tr key={r.id}>
+              <td>
+                {r.name}
+                <div className="muted small-text">{r.phone}</div>
+              </td>
+              <td className="right">
+                {r.acknowledged_at ? (
+                  <span className="chip ok">Bekräftat {r.acknowledged_at.slice(5)}</span>
+                ) : r.read_at ? (
+                  <span className="chip warn">{notice.requires_ack ? 'Läst, ej bekräftat' : `Läst ${r.read_at.slice(5)}`}</span>
+                ) : (
+                  <span className="chip">{r.delivered_via === 'expo' ? 'Levererad' : r.delivered_via === 'email' ? 'Mejlad' : 'Ej läst'}</span>
+                )}
+                {r.reminded_at && !r.acknowledged_at && <div className="muted small-text">påmind {r.reminded_at.slice(5)}</div>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </aside>
   );
 }

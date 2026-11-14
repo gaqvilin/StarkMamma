@@ -129,7 +129,7 @@ describe('Emma ändrar pass', () => {
     expect(r.data.notified).toBeGreaterThan(0);
     const after = (await week('2026-11-30')).find((x) => x.id === s.id)!;
     expect(after).toMatchObject({ date: '2026-12-02', time: '18.00', status: 'moved' });
-    expect((await call('my-notices', 'GET', sara)).data.notices[0].title).toBe('Ändrad tid: passet 01/12 18.45');
+    expect((await call('my-notices', 'GET', sara)).data.notices[0].title).toBe('Ändrad tid: passet 1/12 18.45');
   });
 
   it('ställer in ett pass', async () => {
@@ -141,6 +141,53 @@ describe('Emma ändrar pass', () => {
   it('deltagare kan inte ändra pass', async () => {
     const s = (await week('2026-12-07'))[1];
     expect((await call('session', 'PUT', sara, { id: s.id, cancelled: true })).status).toBe(403);
+  });
+});
+
+describe('bekräftelse av viktiga notiser', () => {
+  it('inställt pass kräver bekräftelse, och Emma ser vem som bekräftat', async () => {
+    const s = (await week('2026-12-07')).find((x) => x.date === '2026-12-08' && x.time === '18.45')!; // Saras tisdag
+    const put = await call('session', 'PUT', emma, { id: s.id, cancelled: true, notify: true });
+    const total = put.data.notified;
+    expect(total).toBeGreaterThan(1);
+
+    const n = (await call('my-notices', 'GET', sara)).data.notices[0];
+    expect(n).toMatchObject({ title: 'Inställt pass 8/12 18.45', requires_ack: true, acknowledged: false });
+
+    let detail = await call('session', 'GET', emma, undefined, `?id=${s.id}`);
+    expect(detail.data.notice).toMatchObject({ recipients: total, acknowledged: 0 });
+    expect(detail.data.notice.missing).toContain('Sara Test');
+
+    expect((await call('my-notices', 'POST', sara, { id: n.id, acknowledge: true })).status).toBe(200);
+    expect((await call('my-notices', 'GET', sara)).data.notices[0].acknowledged).toBe(true);
+
+    detail = await call('session', 'GET', emma, undefined, `?id=${s.id}`);
+    expect(detail.data.notice.acknowledged).toBe(1);
+    expect(detail.data.notice.missing).not.toContain('Sara Test');
+
+    const list = await call('notice', 'GET', emma, undefined, `?id=${n.id}`);
+    const saraRow = list.data.recipients.find((r: { name: string }) => r.name === 'Sara Test');
+    expect(saraRow.acknowledged_at).toBeTruthy();
+    expect((await call('notice', 'POST', emma, { id: n.id, action: 'remind' })).data.reminded).toBe(total - 1);
+  });
+
+  it('Emma kan kräva bekräftelse på information om ett event', async () => {
+    const r = await call('notices', 'POST', emma, {
+      audience: 'all', title: 'AdventsMYS 29/11', body: 'Läs om årets tradition.', requireAck: true,
+      page: { heading: 'AdventsFYS & AdventsMYS', text: 'Pass i Ladan och fika i gymmet.' },
+    });
+    expect(r.status).toBe(201);
+    const history = (await call('notices', 'GET', emma)).data.notices;
+    expect(history[0]).toMatchObject({ title: 'AdventsMYS 29/11', requires_ack: true, acknowledged: 0 });
+    const n = (await call('my-notices', 'GET', sara)).data.notices[0];
+    expect(n.requires_ack).toBe(true);
+    await call('my-notices', 'POST', sara, { id: n.id, acknowledge: true });
+    expect((await call('notices', 'GET', emma)).data.notices[0].acknowledged).toBe(1);
+  });
+
+  it('vanliga notiser kräver ingen bekräftelse', async () => {
+    await call('notices', 'POST', emma, { audience: 'all', title: 'Hej', body: 'Bara info.' });
+    expect((await call('my-notices', 'GET', sara)).data.notices[0].requires_ack).toBe(false);
   });
 });
 

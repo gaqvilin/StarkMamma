@@ -107,6 +107,9 @@ export interface Notice {
   page_link: string | null;
   read: boolean;
   sent_at: string;
+  /** Mottagaren ska bekräfta att hon läst (t.ex. inställt pass eller event). */
+  requires_ack: boolean;
+  acknowledged: boolean;
 }
 
 export interface Charge {

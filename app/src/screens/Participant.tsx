@@ -479,17 +479,26 @@ export function PayScreen() {
 
 // ------------------------------------------------------------------ Notiser
 
-export function InboxScreen({ notices, onOpen }: { notices: Notice[]; onOpen: (n: Notice) => void }) {
+const needsAck = (n: Notice) => n.requires_ack && !n.acknowledged;
+
+export function InboxScreen({ notices, onOpen, onAck }: { notices: Notice[]; onOpen: (n: Notice) => void; onAck: (n: Notice) => void }) {
   return (
     <View>
       <H1>Notiser</H1>
       {notices.map((n) => (
-        <Card key={n.id} style={!n.read ? { borderColor: colors.accent } : undefined}>
-          <Text style={{ fontWeight: '700', fontSize: 15 }}>{n.title}</Text>
+        <Card key={n.id} style={needsAck(n) ? { borderColor: colors.warn, borderWidth: 2 } : !n.read ? { borderColor: colors.accent } : undefined}>
+          {needsAck(n) ? <Pill tone="warn" text="Bekräfta att du läst" /> : null}
+          <Text style={{ fontWeight: '700', fontSize: 15, marginTop: needsAck(n) ? 8 : 0 }}>{n.title}</Text>
           <P style={{ marginTop: 4 }}>{n.body}</P>
-          <Row style={{ justifyContent: 'space-between', marginTop: 8 }}>
-            <P muted style={{ fontSize: 12 }}>{n.sent_at}</P>
-            {n.page_heading ? <Button small variant="secondary" title="Läs mer" onPress={() => onOpen(n)} /> : null}
+          <Row style={{ justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap' }}>
+            <P muted style={{ fontSize: 12 }}>
+              {n.sent_at}
+              {n.requires_ack && n.acknowledged ? ' · bekräftad' : ''}
+            </P>
+            <Row>
+              {n.page_heading ? <Button small variant="secondary" title="Läs mer" onPress={() => onOpen(n)} /> : null}
+              {needsAck(n) ? <Button small title="Jag har läst" onPress={() => onAck(n)} /> : null}
+            </Row>
           </Row>
         </Card>
       ))}
@@ -498,7 +507,27 @@ export function InboxScreen({ notices, onOpen }: { notices: Notice[]; onOpen: (n
   );
 }
 
-export function InfoPageScreen({ notice, onBack }: { notice: Notice; onBack: () => void }) {
+/** Viktiga notiser som väntar på bekräftelse visas överst på alla flikar tills de är bekräftade. */
+export function ImportantNotices({ notices, onOpen, onAck }: { notices: Notice[]; onOpen: (n: Notice) => void; onAck: (n: Notice) => void }) {
+  const pending = notices.filter(needsAck);
+  if (!pending.length) return null;
+  return (
+    <View style={{ marginBottom: 6 }}>
+      {pending.map((n) => (
+        <Card key={n.id} style={{ backgroundColor: colors.warnSoft, borderColor: colors.warn, borderWidth: 2 }}>
+          <Text style={{ fontWeight: '800', fontSize: 16 }}>{n.title}</Text>
+          <P style={{ marginTop: 4 }}>{n.body}</P>
+          <Row style={{ marginTop: 10, flexWrap: 'wrap' }}>
+            <Button small title="Jag har läst" onPress={() => onAck(n)} />
+            {n.page_heading ? <Button small variant="secondary" title="Läs mer" onPress={() => onOpen(n)} /> : null}
+          </Row>
+        </Card>
+      ))}
+    </View>
+  );
+}
+
+export function InfoPageScreen({ notice, onBack, onAck }: { notice: Notice; onBack: () => void; onAck: (n: Notice) => void }) {
   const toast = useToast();
   return (
     <View>
@@ -508,6 +537,8 @@ export function InfoPageScreen({ notice, onBack }: { notice: Notice; onBack: () 
       {(notice.page_text ?? '').split(/\n\n+/).map((para, i) => (
         <P key={i} style={{ marginBottom: 12, fontSize: 16, lineHeight: 24 }}>{para}</P>
       ))}
+      {needsAck(notice) ? <Button title="Jag har läst" onPress={() => onAck(notice)} style={{ marginTop: 8 }} /> : null}
+      {notice.requires_ack && notice.acknowledged ? <Pill tone="ok" text="Du har bekräftat att du läst" /> : null}
       {notice.page_link ? (
         <Button
           variant="secondary"

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Person, Session, addDays, api, dayLabel, isoWeek, mondayOf, shortDate } from '../api';
 
 interface Roster {
+  notice: { id: string; title: string; sent_at: string; recipients: number; acknowledged: number; missing: string[] } | null;
   session: Session;
   roster: { id: string; name: string; phone: string | null; status: string; source: string }[];
   queue: { id: string; name: string; phone: string | null }[];
@@ -178,6 +179,7 @@ function Drawer({ id, onClose, onChanged }: { id: string; onClose: () => void; o
             <button className="btn small" onClick={() => setEditing(true)}>Ändra tid, lokal eller ställ in</button>
           )}
           {error && <p className="error">{error}</p>}
+          {data.notice && <AckBox notice={data.notice} onReminded={load} />}
 
           <h3>Deltagare ({data.roster.filter((r) => !r.status.startsWith('cancelled')).length}/{data.session.capacity})</h3>
           <table className="table compact">
@@ -316,6 +318,32 @@ function AddPerson({ existing, onAdd }: { existing: Set<string>; onAdd: (personI
           Lägg till {p.name}
         </button>
       ))}
+    </div>
+  );
+}
+
+function AckBox({ notice, onReminded }: { notice: NonNullable<Roster['notice']>; onReminded: () => void }) {
+  const [msg, setMsg] = useState('');
+  const done = notice.acknowledged >= notice.recipients;
+  return (
+    <div className={`card ack ${done ? 'ok' : 'warn'}`}>
+      <strong>
+        {notice.title}: {notice.acknowledged} av {notice.recipients} har bekräftat
+      </strong>
+      {!done && <p className="muted small-text">Inte bekräftat: {notice.missing.join(', ')}</p>}
+      {!done && (
+        <button
+          className="btn small"
+          onClick={async () => {
+            const r = await api<{ reminded: number }>('notice', { method: 'POST', body: { id: notice.id, action: 'remind' } });
+            setMsg(`Påminnelse skickad till ${r.reminded}.`);
+            onReminded();
+          }}
+        >
+          Påminn dem som inte bekräftat
+        </button>
+      )}
+      {msg && <p className="ok-text">{msg}</p>}
     </div>
   );
 }
