@@ -65,6 +65,7 @@ export async function POST(request: Request) {
   if (round.phase === 'priority' && !round.existing) return bad('Just nu har de som redan tränar förtur. Anmälan öppnar för nya snart.');
 
   const perWeek = Number(b.perWeek);
+  if ((b.friendName ?? '').length > 100) return bad('Namnet är för långt');
   const choices = Array.isArray(b.choices) ? b.choices : [];
   if (![1, 2, 3].includes(perWeek) || choices.length !== perWeek) return bad('Välj ett pass för varje gång i veckan');
   const [tier] = await q<{ first_installment: number | null }>(`select first_installment from price_tiers where round_id = $1 and per_week = $2`, [round.id, perWeek]);

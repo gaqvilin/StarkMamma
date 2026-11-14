@@ -63,6 +63,7 @@ export async function PUT(request: Request) {
   if (u.date && !/^\d{4}-\d{2}-\d{2}$/.test(u.date)) return bad('Ogiltigt datum');
   if (u.time && !/^\d{1,2}[.:]\d{2}$/.test(u.time)) return bad('Ogiltig tid');
   if (u.place !== undefined && !u.place.trim()) return bad('Lokal saknas');
+  if ((u.place?.length ?? 0) > 60 || (u.note?.length ?? 0) > 300) return bad('Texten är för lång');
   const q = await db();
   const [before] = await q<{ date: string; time: string; place: string; status: string }>(
     `select to_char(starts_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD') as date,

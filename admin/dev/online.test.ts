@@ -77,6 +77,23 @@ describe('onlineträning', () => {
     expect(detail.data.members.find((x: { id: string }) => x.id === annaId)).toMatchObject({ source: 'paid', done: 1 });
   });
 
+  it('"Jag har swishat" ger tillgång direkt; Emma bekräftar eller tar bort den', async () => {
+    const lisaId = (await call('me', 'GET', lisa)).data.user.id;
+    const buy = await call('my-online', 'POST', lisa, { programId, action: 'buy' });
+    const count = async () =>
+      (await call('my-online', 'GET', lisa)).data.workouts.filter((x: { program_id: string }) => x.program_id === programId).length;
+    expect(await count()).toBe(0);
+    expect((await call('my-charges', 'POST', lisa, { id: buy.data.chargeId })).data.access).toBe(true);
+    expect(await count()).toBe(2);
+    let member = (await call('online-program', 'GET', emma, undefined, `?id=${programId}`)).data.members.find((x: { id: string }) => x.id === lisaId);
+    expect(member.source).toBe('reported');
+    await call('charges-pay', 'POST', emma, { id: buy.data.chargeId, method: 'swish' });
+    member = (await call('online-program', 'GET', emma, undefined, `?id=${programId}`)).data.members.find((x: { id: string }) => x.id === lisaId);
+    expect(member.source).toBe('paid');
+    await call('charges-pay', 'POST', emma, { id: buy.data.chargeId, undo: true }); // pengarna kom inte
+    expect(await count()).toBe(0);
+  });
+
   it('Emma kan ge och ta bort tillgång för hand', async () => {
     const lisaId = (await call('me', 'GET', lisa)).data.user.id;
     const count = async () =>

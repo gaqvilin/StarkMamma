@@ -44,6 +44,7 @@ export async function POST(request: Request) {
   const b = await body<Input>(request);
   const name = (b.name ?? '').trim();
   if (!name) return bad('Namn saknas');
+  if (name.length > 120 || (b.info ?? '').length > 10000) return bad('Texten är för lång');
   if (!b.firstMonday || !DATE.test(b.firstMonday) || new Date(`${b.firstMonday}T12:00`).getDay() !== 1) return bad('Startdatum måste vara en måndag');
   const weeks = Math.round(Number(b.weeks));
   if (!(weeks >= 1 && weeks <= 26)) return bad('Antal veckor måste vara 1–26');

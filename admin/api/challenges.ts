@@ -72,6 +72,8 @@ export async function POST(request: Request) {
   const name = (b.name ?? '').trim();
   const tasks = (b.tasks ?? []).map((t) => String(t).trim()).filter(Boolean);
   if (!name) return bad('Namn saknas');
+  if (name.length > 120 || (b.description ?? '').length > 5000 || (b.prize ?? '').length > 300 || tasks.some((t) => t.length > 300))
+    return bad('Någon text är för lång');
   if (!b.startsOn || !b.endsOn || !/^\d{4}-\d{2}-\d{2}$/.test(b.startsOn) || !/^\d{4}-\d{2}-\d{2}$/.test(b.endsOn) || b.endsOn < b.startsOn)
     return bad('Ange start- och slutdatum');
   if (tasks.length < 1 || tasks.length > 30) return bad('Lägg till 1–30 rutor');

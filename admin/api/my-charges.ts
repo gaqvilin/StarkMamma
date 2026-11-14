@@ -27,10 +27,18 @@ export async function POST(request: Request) {
   const { id } = await body<{ id?: string }>(request);
   if (!isUuid(id)) return bad('Ogiltig betalning');
   const q = await db();
-  const rows = await q(
+  const [row] = await q<{ online_program_id: string | null }>(
     `update charges set reported_paid_at = coalesce(reported_paid_at, now())
-     where id = $1 and person_id = $2 and status = 'unpaid' returning 1`,
+     where id = $1 and person_id = $2 and status = 'unpaid' returning online_program_id`,
     [id, user.id],
   );
-  return rows.length ? json({ ok: true }) : bad('Betalningen finns inte', 404);
+  if (!row) return bad('Betalningen finns inte', 404);
+  // Onlineträning: tillgång direkt, så att ingen behöver vänta på Emma. Hon kontrollerar
+  // betalningen i efterhand och kan ta bort tillgången om den inte kommit in.
+  if (row.online_program_id) {
+    await q(`insert into online_access (program_id, person_id, source) values ($1, $2, 'reported') on conflict do nothing`, [
+      row.online_program_id, user.id,
+    ]);
+  }
+  return json({ ok: true, access: !!row.online_program_id });
 }

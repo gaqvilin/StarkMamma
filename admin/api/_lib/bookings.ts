@@ -5,7 +5,7 @@
 // - Sena återbud ger inget tillgodo. Extrabokningar som avbokas i tid återbetalas
 //   (tillgodo tillbaka, klipp tillbaka, drop-in-avgiften stryks).
 // - Tillgodo-pass gäller bara ordinarie pass i samma omgång, inte extrapass.
-import type { Query } from './db.js';
+import { tx, type Query } from './db.js';
 import { sendNotice } from './notify.js';
 import { ACTIVE, ROSTER_CTE } from './roster.js';
 
@@ -129,6 +129,31 @@ export async function cancel(
   return { status, credit: st.member && inTime };
 }
 
+/**
+ * Tar en plats på passet under ett lås per pass, så att två samtidiga bokningar aldrig kan
+ * ta samma sista plats. `admin` hoppar över max (Emma har sista ordet).
+ * Returnerar bookings-radens id, eller null om passet var fullt.
+ */
+async function claimSpot(sessionId: string, personId: string, source: string, admin: boolean): Promise<string | null> {
+  const [, rows] = await tx([
+    { text: `select pg_advisory_xact_lock(hashtext($1))`, params: [sessionId] },
+    {
+      text: `with s as (select * from sessions where id = $1), ${ROSTER_CTE},
+         ins as (
+           insert into bookings (session_id, person_id, source, status)
+           select $1, $2, $3, 'booked'
+           where $4 or (select count(*) from roster where status in ${ACTIVE}) < (select capacity from s)
+           on conflict (session_id, person_id) do update
+             set source = excluded.source, status = 'booked', punch_card_id = null, charge_id = null, updated_at = now()
+             where bookings.status not in ${ACTIVE}
+           returning id)
+         select id from ins`,
+      params: [sessionId, personId, source, admin],
+    },
+  ]);
+  return (rows[0]?.id as string) ?? null;
+}
+
 /** Ångrar ett återbud på ordinarie pass, om platsen finns kvar och tillgodo-passet inte använts. */
 export async function undoCancel(q: Query, sessionId: string, personId: string, now: Date, admin = false) {
   const s = await getSession(q, sessionId, now);
@@ -137,8 +162,19 @@ export async function undoCancel(q: Query, sessionId: string, personId: string, 
   if (!st.member || !st.booking || st.active) throw new RuleError('Det finns inget återbud att ångra');
   const [credit] = await q<{ used: string | null }>(`select used_booking_id as used from credits where from_booking_id = $1`, [st.booking.id]);
   if (credit?.used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
-  if (!admin && (await activeCount(q, s.id)) >= s.capacity) throw new RuleError('Platsen har gått till någon annan');
-  await q(`delete from bookings where id = $1`, [st.booking.id]);
+  const [, rows] = await tx([
+    { text: `select pg_advisory_xact_lock(hashtext($1))`, params: [sessionId] },
+    {
+      text: `with s as (select * from sessions where id = $1), ${ROSTER_CTE},
+         del as (
+           delete from bookings where id = $2
+             and ($3 or (select count(*) from roster where status in ${ACTIVE}) < (select capacity from s))
+           returning id)
+         select id from del`,
+      params: [sessionId, st.booking.id, admin],
+    },
+  ]);
+  if (!rows.length) throw new RuleError('Platsen har gått till någon annan');
 }
 
 export async function availableCredits(q: Query, personId: string, roundId: string | null) {
@@ -159,48 +195,49 @@ export async function book(q: Query, sessionId: string, personId: string, source
   const st = await state(q, s, personId);
   if (st.active) throw new RuleError('Du är redan bokad på passet');
   if (st.member) return undoCancel(q, sessionId, personId, now, admin);
-  if (!admin && (await activeCount(q, s.id)) >= s.capacity) throw new RuleError('Passet är fullt. Ställ dig i kön så får du en notis om en plats blir ledig.');
 
-  let creditId: string | null = null;
-  let punchId: string | null = null;
-  let chargeId: string | null = null;
+  if (source === 'credit' && s.kind !== 'ordinary') throw new RuleError('Tillgodo-pass gäller bara ordinarie pass');
+
+  // 1. Säkra platsen först (under lås), 2. dra tillgodo/klipp eller skapa avgift.
+  // Går steg 2 inte att genomföra släpps platsen igen.
+  const bookingId = await claimSpot(s.id, personId, source, admin);
+  if (!bookingId) throw new RuleError('Passet är fullt. Ställ dig i kön så får du en notis om en plats blir ledig.');
+  const release = async (msg: string) => {
+    await q(`delete from bookings where id = $1`, [bookingId]);
+    throw new RuleError(msg);
+  };
+
   if (source === 'credit') {
-    if (s.kind !== 'ordinary') throw new RuleError('Tillgodo-pass gäller bara ordinarie pass');
     const [c] = await q<{ id: string }>(
-      `select id from credits where person_id = $1 and round_id = $2 and used_booking_id is null order by created_at limit 1`,
-      [personId, s.round_id],
+      `update credits set used_booking_id = $3
+       where id = (select id from credits where person_id = $1 and round_id = $2 and used_booking_id is null
+                   order by created_at limit 1 for update skip locked)
+         and used_booking_id is null
+       returning id`,
+      [personId, s.round_id, bookingId],
     );
-    if (!c) throw new RuleError('Du har inga tillgodo-pass i den här omgången');
-    creditId = c.id;
+    if (!c) await release('Du har inga tillgodo-pass kvar i den här omgången');
   } else if (source === 'punch_card') {
     const [c] = await q<{ id: string }>(
       `update punch_cards set remaining = remaining - 1
        where id = (select id from punch_cards where person_id = $1 and remaining > 0 and valid_until >= $2::date
-                   order by valid_until limit 1)
+                   order by valid_until limit 1 for update skip locked)
+         and remaining > 0
        returning id`,
       [personId, s.date],
     );
-    if (!c) throw new RuleError('Du har inget giltigt klippkort med klipp kvar');
-    punchId = c.id;
+    if (!c) await release('Du har inget giltigt klippkort med klipp kvar');
+    await q(`update bookings set punch_card_id = $2 where id = $1`, [bookingId, c.id]);
   } else {
     const [c] = await q<{ id: string }>(
       `insert into charges (person_id, description, amount, due_on, kind, round_id)
        values ($1, $2, $3, $4::date, 'drop_in', $5) returning id`,
       [personId, `Drop-in ${s.date} ${s.time} ${s.place}`, s.price ?? DEFAULT_DROP_IN, s.date, s.round_id],
     );
-    chargeId = c.id;
+    await q(`update bookings set charge_id = $2 where id = $1`, [bookingId, c.id]);
   }
-  const [b] = await q<{ id: string }>(
-    `insert into bookings (session_id, person_id, source, status, punch_card_id, charge_id)
-     values ($1, $2, $3, 'booked', $4, $5)
-     on conflict (session_id, person_id) do update set source = excluded.source, status = 'booked',
-       punch_card_id = excluded.punch_card_id, charge_id = excluded.charge_id, updated_at = now()
-     returning id`,
-    [s.id, personId, source, punchId, chargeId],
-  );
-  if (creditId) await q(`update credits set used_booking_id = $2 where id = $1`, [creditId, b.id]);
   await q(`delete from waitlist where session_id = $1 and person_id = $2`, [s.id, personId]);
-  return { bookingId: b.id };
+  return { bookingId };
 }
 
 export async function setAttendance(q: Query, sessionId: string, personId: string, status: 'attending' | 'attended' | 'no_show', now: Date) {

@@ -42,6 +42,7 @@ export async function POST(request: Request) {
   const pageText = page?.text?.trim() || null;
   const link = page?.link?.trim() || null;
   if (page && (!heading || !pageText)) return bad('Informationssidan behöver rubrik och text');
+  if ((heading?.length ?? 0) > 200 || (pageText?.length ?? 0) > 10000) return bad('Informationssidan är för lång');
   if (link && !/^https:\/\/\S+$/i.test(link)) return bad('Länken måste börja med https://');
 
   const q = await db();

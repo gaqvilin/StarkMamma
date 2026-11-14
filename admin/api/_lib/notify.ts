@@ -57,18 +57,26 @@ export async function deliver(q: Query, noticeId: string) {
      where r.notice_id = $1 and r.delivered_via is null and p.email is not null`,
     [noticeId],
   );
-  for (const r of rest) {
-    const res = await fetch('https://api.resend.com/emails', {
+  for (let i = 0; i < rest.length; i += 100) {
+    const batch = rest.slice(i, i + 100);
+    const res = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
       headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.MAIL_FROM || 'StarkMamma <no-reply@starkmamma.com>',
-        to: r.email,
-        subject: n.title,
-        text: `${n.body}\n\nÖppna StarkMamma-appen för mer information.`,
-      }),
+      body: JSON.stringify(
+        batch.map((r) => ({
+          from: process.env.MAIL_FROM || 'StarkMamma <no-reply@starkmamma.com>',
+          to: r.email,
+          subject: n.title,
+          text: `${n.body}\n\nÖppna StarkMamma-appen för mer information.`,
+        })),
+      ),
     });
-    if (res.ok) await q(`update notice_recipients set delivered_via = 'email' where notice_id = $1 and person_id = $2`, [noticeId, r.person_id]);
+    if (res.ok) {
+      await q(`update notice_recipients set delivered_via = 'email' where notice_id = $1 and person_id = any($2::uuid[])`, [
+        noticeId,
+        batch.map((r) => r.person_id),
+      ]);
+    }
   }
 }
 

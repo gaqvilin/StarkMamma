@@ -446,8 +446,12 @@ export function PayScreen() {
 
   const report = async (c: Charge) => {
     try {
-      await api('my-charges', { method: 'POST', body: { id: c.id } });
-      toast({ title: 'Tack!', body: 'Emma markerar betalningen när hon sett den, sedan kommer kvittot här.' });
+      const r = await api<{ access?: boolean }>('my-charges', { method: 'POST', body: { id: c.id } });
+      toast(
+        r.access
+          ? { title: 'Tack! Du har nu tillgång', body: 'Passen finns under Online. Kvittot kommer här när Emma sett betalningen.' }
+          : { title: 'Tack!', body: 'Emma markerar betalningen när hon sett den, sedan kommer kvittot här.' },
+      );
       reload();
     } catch (e) {
       toast({ title: 'Det gick inte', body: (e as Error).message });

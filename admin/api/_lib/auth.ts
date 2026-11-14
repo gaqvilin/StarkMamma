@@ -55,6 +55,23 @@ function tokenFrom(request: Request): string | null {
   return c ? c.slice(COOKIE.length + 1) : null;
 }
 
+/**
+ * Skydd mot CSRF för cookie-inloggning (admin på datorn): ändringar måste komma från samma
+ * ursprung, eller som JSON (vilket en annan webbplats inte kan skicka utan CORS-förfrågan).
+ * Mobilappen använder Bearer-token och berörs inte.
+ */
+export function csrfBlocked(request: Request): boolean {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return false;
+  if (request.headers.get('authorization')?.startsWith('Bearer ')) return false;
+  if (!(request.headers.get('cookie') || '').includes(`${COOKIE}=`)) return false;
+  const origin = request.headers.get('origin');
+  if (origin) {
+    const allowed = new Set([new URL(request.url).origin, process.env.PUBLIC_URL ? new URL(process.env.PUBLIC_URL).origin : '']);
+    return !allowed.has(origin);
+  }
+  return !(request.headers.get('content-type') || '').startsWith('application/json');
+}
+
 export interface User {
   id: string;
   name: string;
@@ -82,6 +99,7 @@ export async function currentUser(request: Request): Promise<User | null> {
 
 /** Svarar 401/403 om anroparen inte är inloggad som tränare, annars null. */
 export async function requireTrainer(request: Request): Promise<Response | null> {
+  if (csrfBlocked(request)) return bad('Förfrågan nekad', 403);
   const user = await currentUser(request);
   if (!user) return bad('Inte inloggad', 401);
   if (user.role !== 'trainer') return bad('Bara för tränaren', 403);
@@ -90,6 +108,7 @@ export async function requireTrainer(request: Request): Promise<Response | null>
 
 /** Kräver en inloggad person. Med active: true måste kontot också vara aktiverat av Emma. */
 export async function requireUser(request: Request, opts: { active?: boolean } = {}): Promise<User | Response> {
+  if (csrfBlocked(request)) return bad('Förfrågan nekad', 403);
   const user = await currentUser(request);
   if (!user) return bad('Inte inloggad', 401);
   if (opts.active && user.status !== 'active') return bad('Ditt konto väntar på att Emma aktiverar det', 403);

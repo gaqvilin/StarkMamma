@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     await q(`delete from payments where charge_id = $1`, [b.id]);
     await q(`update charges set status = 'unpaid' where id = $1`, [b.id]);
     if (c.online_program_id) {
-      await q(`delete from online_access where program_id = $1 and person_id = $2 and source = 'paid'`, [c.online_program_id, c.person_id]);
+      await q(`delete from online_access where program_id = $1 and person_id = $2 and source in ('paid', 'reported')`, [c.online_program_id, c.person_id]);
     }
     return json({ ok: true });
   }
@@ -33,7 +33,11 @@ export async function POST(request: Request) {
   await q(`update charges set status = 'paid' where id = $1`, [b.id]);
   if (c.online_program_id) {
     // Onlineträning: betald = tillgång till passen.
-    await q(`insert into online_access (program_id, person_id, source) values ($1, $2, 'paid') on conflict do nothing`, [c.online_program_id, c.person_id]);
+    await q(
+      `insert into online_access (program_id, person_id, source) values ($1, $2, 'paid')
+       on conflict (program_id, person_id) do update set source = 'paid' where online_access.source = 'reported'`,
+      [c.online_program_id, c.person_id],
+    );
   }
   if (c.kind === 'punch_card') {
     await q(

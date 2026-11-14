@@ -2,6 +2,7 @@
 //  1. "Kommer du imorgon?" till alla som är bokade på morgondagens pass och inte svarat,
 //  2. påminnelse om betalningar som förfaller om 2 dagar.
 // Skyddas med CRON_SECRET (Vercel skickar den som Bearer-token).
+import { timingSafeEqual } from 'node:crypto';
 import { db } from './_lib/db.js';
 import { bad, json } from './_lib/http.js';
 import { sendNotice } from './_lib/notify.js';
@@ -10,7 +11,9 @@ import { now } from './_lib/time.js';
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return bad('Nekad', 401);
+  const given = Buffer.from(request.headers.get('authorization') ?? '');
+  const want = Buffer.from(`Bearer ${secret ?? ''}`);
+  if (!secret || given.length !== want.length || !timingSafeEqual(given, want)) return bad('Nekad', 401);
   const q = await db();
   const t = now().toISOString();
   const sessions = await q<{ id: string; time: string; place: string }>(

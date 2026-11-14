@@ -1,9 +1,10 @@
 // POST /api/profile {name, phone} -> den inloggade fyller i eller ändrar sitt namn och telefonnummer.
-import { currentUser, normalizePhone } from './_lib/auth.js';
+import { csrfBlocked, currentUser, normalizePhone } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, json } from './_lib/http.js';
 
 export async function POST(request: Request) {
+  if (csrfBlocked(request)) return bad('Förfrågan nekad', 403);
   const user = await currentUser(request);
   if (!user) return bad('Inte inloggad', 401);
   const input = await body<{ name?: string; phone?: string }>(request);

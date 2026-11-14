@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Upload } from 'tus-js-client';
 import { Person, api, shortDate } from '../api';
 
 interface Program {
@@ -18,11 +19,21 @@ interface Workout {
   title: string;
   body: string | null;
   video_url: string | null;
+  video_provider: 'link' | 'bunny';
+  video_id: string | null;
+  video_status: 'uploading' | 'processing' | 'ready' | 'failed' | null;
   duration_min: number | null;
   publish_on: string | null;
   sort: number;
   done: number;
 }
+
+const VIDEO_STATUS: Record<string, [string, string]> = {
+  uploading: ['Film laddas upp', 'warn'],
+  processing: ['Film komprimeras', 'warn'],
+  ready: ['Film klar', 'ok'],
+  failed: ['Filmen gick inte att bearbeta', 'danger'],
+};
 interface Detail {
   program: Program;
   workouts: Workout[];
@@ -178,7 +189,10 @@ function ProgramView({ id, onChanged }: { id: string; onChanged: () => void }) {
                   <strong>{w.title}</strong>
                   <div className="chips">
                     {w.publish_on && w.publish_on > today ? <span className="chip warn">Syns {shortDate(w.publish_on)}</span> : <span className="chip ok">Publicerat</span>}
-                    {w.video_url && <span className="chip accent">Film</span>}
+                    {w.video_provider === 'link' && w.video_url && <span className="chip accent">Filmlänk</span>}
+                    {w.video_provider === 'bunny' && w.video_status && (
+                      <span className={`chip ${VIDEO_STATUS[w.video_status][1]}`}>{VIDEO_STATUS[w.video_status][0]}</span>
+                    )}
                     {w.duration_min && <span className="chip">{w.duration_min} min</span>}
                     <span className="chip">{w.done} har gjort</span>
                   </div>
@@ -191,6 +205,7 @@ function ProgramView({ id, onChanged }: { id: string; onChanged: () => void }) {
                 )}
                 <div className="row" style={{ marginTop: 8 }}>
                   <button className="btn small" onClick={() => setEditing(w)}>Ändra</button>
+                  <VideoUpload workout={w} onDone={reload} />
                   <button
                     className="link"
                     onClick={async () => {
@@ -215,6 +230,7 @@ function ProgramView({ id, onChanged }: { id: string; onChanged: () => void }) {
           {waiting.length > 0 && (
             <div className="card ack warn">
               <strong>Väntar på betalning ({waiting.length})</strong>
+              <span className="muted small-text">De som tryckt "Jag har swishat" har redan tillgång. Kontrollera att pengarna kommit och markera betalningen.</span>
               {waiting.map((w) => (
                 <div key={w.charge_id} className="row" style={{ justifyContent: 'space-between', width: '100%' }}>
                   <span>
@@ -227,7 +243,7 @@ function ProgramView({ id, onChanged }: { id: string; onChanged: () => void }) {
                       reload();
                     }}
                   >
-                    Betald, ge tillgång
+                    {w.reported ? 'Betalningen har kommit' : 'Betald, ge tillgång'}
                   </button>
                 </div>
               ))}
@@ -244,7 +260,9 @@ function ProgramView({ id, onChanged }: { id: string; onChanged: () => void }) {
                       <div className="muted small-text">{m.phone}</div>
                     </td>
                     <td>
-                      <span className={`chip ${m.source === 'paid' ? 'ok' : ''}`}>{m.source === 'paid' ? 'Betalt' : 'Tillgång av dig'}</span>
+                      <span className={`chip ${m.source === 'paid' ? 'ok' : m.source === 'reported' ? 'warn' : ''}`}>
+                        {m.source === 'paid' ? 'Betalt' : m.source === 'reported' ? 'Swishat, kontrollera' : 'Tillgång av dig'}
+                      </span>
                     </td>
                     <td className="muted small-text nowrap">{m.done} pass gjorda</td>
                     <td className="right">
@@ -298,9 +316,12 @@ function WorkoutForm({ programId, workout, onDone }: { programId: string; workou
       <input id="w-title" placeholder="Pass 3: Helkropp 20 min" value={title} onChange={(e) => setTitle(e.target.value)} required />
       <label htmlFor="w-text">Passet i text</label>
       <textarea id="w-text" rows={7} placeholder={'Värm upp 5 min.\n\n5 varv, 45 sek arbete / 15 sek vila:\n- Knäböj\n- Utfall\n- Armhävningar'} value={text} onChange={(e) => setText(e.target.value)} />
-      <label htmlFor="w-video">Film (länk)</label>
+      <label htmlFor="w-video">Film (länk, valfritt)</label>
       <input id="w-video" placeholder="https://youtu.be/..." value={video} onChange={(e) => setVideo(e.target.value)} />
-      <p className="muted small-text">Ladda upp filmen som olistad på YouTube eller Vimeo och klistra in länken.</p>
+      <p className="muted small-text">
+        Länk till olistad YouTube eller Vimeo. Vill du hellre ladda upp filen själv sparar du passet och trycker sedan Ladda upp film. Då
+        komprimeras filmen för mobilen och kan bara ses av dem som har tillgång.
+      </p>
       <div className="row">
         <div style={{ width: 120 }}>
           <label htmlFor="w-min">Minuter</label>
@@ -351,5 +372,56 @@ function GrantAccess({ programId, existing, onDone }: { programId: string; exist
         </button>
       ))}
     </div>
+  );
+}
+
+/** Laddar upp filmen direkt från webbläsaren till Bunny Stream, som komprimerar den för mobilen. */
+function VideoUpload({ workout, onDone }: { workout: Workout; onDone: () => void }) {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const start = async (file: File) => {
+    setError('');
+    try {
+      const auth = await api<{ endpoint: string; headers: Record<string, string>; videoId: string }>('video-upload', {
+        method: 'POST',
+        body: { workoutId: workout.id },
+      });
+      setProgress(0);
+      await new Promise<void>((resolve, reject) => {
+        const up = new Upload(file, {
+          endpoint: auth.endpoint,
+          retryDelays: [0, 3000, 10000, 30000],
+          headers: auth.headers,
+          metadata: { filetype: file.type, title: workout.title },
+          onProgress: (sent, total) => setProgress(Math.round((sent / total) * 100)),
+          onError: reject,
+          onSuccess: () => resolve(),
+        });
+        up.start();
+      });
+      setProgress(null);
+      onDone();
+    } catch (e) {
+      setProgress(null);
+      setError((e as Error).message);
+    }
+  };
+  if (progress !== null) return <span className="muted small-text">Laddar upp {progress} %… Låt sidan vara öppen.</span>;
+  return (
+    <>
+      <label className="btn small">
+        {workout.video_provider === 'bunny' && workout.video_id ? 'Byt film' : 'Ladda upp film'}
+        <input
+          type="file"
+          accept="video/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) start(f);
+          }}
+        />
+      </label>
+      {error && <span className="error small-text">{error}</span>}
+    </>
   );
 }

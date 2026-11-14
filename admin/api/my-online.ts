@@ -19,7 +19,8 @@ export async function GET(request: Request) {
   );
   const workouts = mine.length
     ? await q(
-        `select w.id, w.program_id, w.title, w.body, w.video_url, w.duration_min, to_char(w.publish_on, 'YYYY-MM-DD') as publish_on,
+        `select w.id, w.program_id, w.title, w.body, w.duration_min, to_char(w.publish_on, 'YYYY-MM-DD') as publish_on,
+           (w.video_url is not null or (w.video_provider = 'bunny' and w.video_id is not null)) as has_video,
            exists (select 1 from workout_done d where d.workout_id = w.id and d.person_id = $1) as done
          from workouts w where w.program_id = any($2::uuid[]) and (w.publish_on is null or w.publish_on <= $3::date)
          order by w.publish_on desc nulls last, w.sort desc, w.created_at desc`,
@@ -65,11 +66,19 @@ export async function POST(request: Request) {
       await q(`insert into online_access (program_id, person_id, source) values ($1, $2, 'paid') on conflict do nothing`, [b.programId, user.id]);
       return json({ access: true });
     }
+    // Unikt index (en obetald per person och program) gör att dubbelklick inte ger dubbla betalningar.
     const [c] = await q<{ id: string }>(
-      `insert into charges (person_id, description, amount, kind, online_program_id) values ($1, $2, $3, 'online', $4) returning id`,
+      `insert into charges (person_id, description, amount, kind, online_program_id) values ($1, $2, $3, 'online', $4)
+       on conflict (online_program_id, person_id) where status = 'unpaid' and online_program_id is not null do nothing
+       returning id`,
       [user.id, p.name, p.price, b.programId],
     );
-    return json({ chargeId: c.id }, 201);
+    if (c) return json({ chargeId: c.id }, 201);
+    const [again] = await q<{ id: string }>(
+      `select id from charges where online_program_id = $1 and person_id = $2 and status = 'unpaid'`,
+      [b.programId, user.id],
+    );
+    return json({ chargeId: again.id });
   }
   if (b.action === 'done' || b.action === 'undo') {
     if (!isUuid(b.workoutId)) return bad('Ogiltigt pass');

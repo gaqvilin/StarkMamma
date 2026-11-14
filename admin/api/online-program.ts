@@ -2,6 +2,7 @@
 import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, isUuid, json } from './_lib/http.js';
+import { videoConfigured, videoStatus } from './_lib/video.js';
 export { OPTIONS } from './_lib/http.js';
 
 export async function GET(request: Request) {
@@ -17,11 +18,21 @@ export async function GET(request: Request) {
   );
   if (!program) return bad('Programmet finns inte', 404);
   const workouts = await q(
-    `select w.id, w.title, w.body, w.video_url, w.duration_min, w.sort, to_char(w.publish_on, 'YYYY-MM-DD') as publish_on,
+    `select w.id, w.title, w.body, w.video_url, w.video_provider, w.video_id, w.video_status, w.duration_min, w.sort,
+       to_char(w.publish_on, 'YYYY-MM-DD') as publish_on,
        (select count(*) from workout_done d where d.workout_id = w.id)::int as done
      from workouts w where w.program_id = $1 order by w.publish_on nulls first, w.sort, w.created_at`,
     [id],
   );
+  // Uppdatera status för filmer som laddas upp eller kodas om hos Bunny.
+  if (videoConfigured()) {
+    for (const w of workouts as { id: string; video_provider: string; video_id: string | null; video_status: string | null }[]) {
+      if (w.video_provider === 'bunny' && w.video_id && w.video_status !== 'ready' && w.video_status !== 'failed') {
+        w.video_status = await videoStatus(w.video_id);
+        await q(`update workouts set video_status = $2 where id = $1`, [w.id, w.video_status]);
+      }
+    }
+  }
   const members = await q(
     `select p.id, p.name, p.email, p.phone, a.source, to_char(a.granted_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD') as granted_on,
        (select count(*) from workout_done d join workouts w on w.id = d.workout_id where d.person_id = p.id and w.program_id = $1)::int as done

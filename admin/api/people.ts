@@ -29,6 +29,7 @@ function clean(input: Input) {
   const email = (input.email ?? '').trim().toLowerCase() || null;
   const groupIds = Array.isArray(input.groupIds) ? input.groupIds.filter(isUuid) : [];
   if (!name) return { error: 'Namn saknas' } as const;
+  if (name.length > 100 || (email?.length ?? 0) > 254) return { error: 'Namnet eller e-postadressen är för lång' } as const;
   if ((input.phone ?? '').trim() && !phone) return { error: 'Ogiltigt mobilnummer' } as const;
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Ogiltig e-postadress' } as const;
   return { name, phone, email, groupIds } as const;

@@ -13,7 +13,7 @@ interface Workout {
   program_id: string;
   title: string;
   body: string | null;
-  video_url: string | null;
+  has_video: boolean;
   duration_min: number | null;
   publish_on: string | null;
   done: boolean;
@@ -75,7 +75,7 @@ export function OnlineScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontWeight: '700', fontSize: 15, color: w.done ? colors.muted : colors.ink }}>{w.title}</Text>
                       <Row style={{ marginTop: 4, flexWrap: 'wrap' }}>
-                        {w.video_url ? <Pill tone="accent" text="Film" /> : <Pill text="Text" />}
+                        {w.has_video ? <Pill tone="accent" text="Film" /> : <Pill text="Text" />}
                         {w.duration_min ? <Pill text={`${w.duration_min} min`} /> : null}
                         {w.done ? <Pill tone="ok" text="Klar" /> : null}
                       </Row>
@@ -130,6 +130,20 @@ export function OnlineScreen() {
 }
 
 function WorkoutView({ w, onBack, onDone }: { w: Workout; onBack: () => void; onDone: (w: Workout, done: boolean) => void }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(false);
+  // Länken hämtas först när man trycker, och för uppladdade filmer gäller den bara några timmar.
+  const play = async () => {
+    setLoading(true);
+    try {
+      const { url } = await api<{ url: string }>(`video-play?workoutId=${w.id}`);
+      await WebBrowser.openBrowserAsync(url);
+    } catch (e) {
+      toast({ title: 'Filmen gick inte att öppna', body: (e as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <View>
       <Button small variant="ghost" title="Tillbaka" onPress={onBack} style={{ alignSelf: 'flex-start', paddingHorizontal: 0, marginBottom: 6 }} />
@@ -138,8 +152,8 @@ function WorkoutView({ w, onBack, onDone }: { w: Workout; onBack: () => void; on
         {w.duration_min ? <Pill text={`${w.duration_min} min`} /> : null}
         {w.done ? <Pill tone="ok" text="Klar" /> : null}
       </Row>
-      {w.video_url ? (
-        <Button title="Spela filmen och träna med Emma" onPress={() => WebBrowser.openBrowserAsync(w.video_url!)} style={{ marginBottom: 16 }} />
+      {w.has_video ? (
+        <Button title={loading ? 'Öppnar filmen…' : 'Spela filmen och träna med Emma'} disabled={loading} onPress={play} style={{ marginBottom: 16 }} />
       ) : null}
       {(w.body ?? '').split(/\n\n+/).map((para, i) => (
         <P key={i} style={{ marginBottom: 12, fontSize: 16, lineHeight: 24 }}>{para}</P>

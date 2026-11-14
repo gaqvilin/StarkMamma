@@ -35,7 +35,8 @@ export async function POST(request: Request) {
     if (!r || r.status === 'confirmed') continue;
 
     if (!d.groupIds || !d.groupIds.length) {
-      await q(`update registrations set status = 'waitlist' where id = $1`, [d.id]);
+      const moved = await q(`update registrations set status = 'waitlist' where id = $1 and status = 'pending' returning id`, [d.id]);
+      if (!moved.length) continue;
       await sendNotice(
         q,
         { title: 'Du står på väntelistan', body: `Grupperna du valde i ${r.round_name} är fulla just nu. Du får en notis om en plats blir ledig.`, audience: `person:${r.person_id}` },
@@ -51,8 +52,13 @@ export async function POST(request: Request) {
       [r.round_id, groupIds],
     );
     if (!valid.length) continue;
+    // Ta "bekräftad" atomiskt först, så att ett dubbelklick inte skapar dubbla betalningskrav.
+    const claimed = await q(
+      `update registrations set status = 'confirmed', assigned_group_ids = $2::uuid[] where id = $1 and status <> 'confirmed' returning id`,
+      [d.id, valid.map((g) => g.id)],
+    );
+    if (!claimed.length) continue;
     await q(`insert into group_members (group_id, person_id) select unnest($1::uuid[]), $2 on conflict do nothing`, [valid.map((g) => g.id), r.person_id]);
-    await q(`update registrations set status = 'confirmed', assigned_group_ids = $2::uuid[] where id = $1`, [d.id, valid.map((g) => g.id)]);
     await q(`update people set status = 'active', activated_at = coalesce(activated_at, now()) where id = $1 and status = 'pending'`, [r.person_id]);
 
     const price = r.price ?? 0;

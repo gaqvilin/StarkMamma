@@ -28,6 +28,7 @@ export async function POST(request: Request) {
   const b = await body<{ id?: string; name?: string; description?: string; price?: number; startsOn?: string; endsOn?: string; status?: string }>(request);
   const name = (b.name ?? '').trim();
   if (!name) return bad('Namn saknas');
+  if (name.length > 120 || (b.description ?? '').length > 5000) return bad('Namnet eller beskrivningen är för lång');
   const price = Math.round(Number(b.price ?? 0));
   if (!(price >= 0 && price <= 100000)) return bad('Ogiltigt pris');
   for (const d of [b.startsOn, b.endsOn]) if (d && !DATE.test(d)) return bad('Ogiltigt datum');

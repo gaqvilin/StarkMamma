@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   const description = (b.description ?? '').trim();
   const amount = Math.round(Number(b.amount));
   if (!description) return bad('Beskrivning saknas');
+  if (description.length > 200) return bad('Beskrivningen är för lång');
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) return bad('Ogiltigt belopp');
   if (b.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(b.dueOn)) return bad('Ogiltigt datum');
   const kind = ['round', 'installment', 'drop_in', 'punch_card', 'event', 'product', 'tab', 'online'].includes(b.kind ?? '') ? b.kind : 'product';
