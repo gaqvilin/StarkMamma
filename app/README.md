@@ -9,7 +9,7 @@ Deltagarnas app för iPhone och Android, byggd med Expo (React Native) och TypeS
   - Hem: nästa pass med "Jag kommer" och "Kommer inte", mina pass, återbud och ångra, samt tillgodo-pass
   - Boka: pass de närmaste två veckorna, med tillgodo-pass, klipp eller drop-in, och kö när passet är fullt
   - Anmälan: nästa omgång med förtur, första- och andrahandsval, kompis och delbetalning
-  - Betala: Swish-knapp, kvitton och klippkort
+  - Betala: knappen öppnar Swish med mottagare, belopp och meddelande ifyllda och låsta. Efteråt trycker man "Jag har swishat", och Emma ser det i admin. Här finns också kvitton och klippkort
   - Notiser: klockan uppe till höger, med informationssidor
 - **Emma** (rollen `trainer`) får admin i appen:
   - Pass: veckan, aktivera nya konton, byt lokal, ställ in och registrera återbud

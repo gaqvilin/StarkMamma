@@ -406,23 +406,52 @@ function SignupForm({ info, onDone }: { info: RegInfo; onDone: () => void }) {
 
 // ------------------------------------------------------------------ Betala
 
+/**
+ * Öppnar Swish-appen med mottagare, belopp och meddelande ifyllda och låsta.
+ * Swish tillåter högst 50 tecken i meddelandet och bara vissa tecken.
+ */
+export function swishUrl(payee: string, amount: number, message: string) {
+  const clean = message.replace(/[–—]/g, '-').replace(/[^A-Za-zÅÄÖåäöÉéÜü0-9 .,:;!?()\-+/&%'"]/g, '').replace(/\s+/g, ' ').trim().slice(0, 50);
+  const data = {
+    version: 1,
+    payee: { value: payee.replace(/\D/g, '') },
+    amount: { value: amount, editable: false },
+    message: { value: clean, editable: false },
+  };
+  return `swish://payment?data=${encodeURIComponent(JSON.stringify(data))}`;
+}
+
 export function PayScreen() {
-  const { data, error } = useApi<{ charges: Charge[]; swish: string | null }>('my-charges');
+  const { data, error, reload } = useApi<{ charges: Charge[]; swish: string | null }>('my-charges');
   const me = useApi<Schedule>('my-schedule');
   const { user } = useAuth();
   const toast = useToast();
+  const [opened, setOpened] = useState<Record<string, boolean>>({});
   if (!data) return <Loading error={error} />;
   const unpaid = data.charges.filter((c) => c.status === 'unpaid');
   const paid = data.charges.filter((c) => c.status === 'paid');
 
-  const swish = (c: Charge) => {
-    const msg = `${user?.name ?? ''} ${c.description}`.slice(0, 50);
+  const pay = async (c: Charge) => {
     if (!data.swish) return toast({ title: 'Swish', body: 'Swish-numret är inte inlagt än. Fråga Emma.' });
-    const payload = encodeURIComponent(
-      JSON.stringify({ version: 1, payee: { value: data.swish }, amount: { value: c.amount }, message: { value: msg } }),
-    );
-    if (Platform.OS === 'web') return toast({ title: 'Swish', body: `Swisha ${c.amount} kr till ${data.swish} med meddelandet "${msg}".` });
-    Linking.openURL(`swish://payment?data=${payload}`).catch(() => toast({ title: 'Swish', body: `Swisha ${c.amount} kr till ${data.swish}.` }));
+    const msg = `${user?.name ?? ''} ${c.description}`;
+    setOpened((o) => ({ ...o, [c.id]: true }));
+    if (Platform.OS === 'web')
+      return toast({ title: 'Swish', body: `Swisha ${c.amount} kr till ${data.swish} med meddelandet "${msg.slice(0, 50)}".` });
+    try {
+      await Linking.openURL(swishUrl(data.swish, c.amount, msg));
+    } catch {
+      toast({ title: 'Swish är inte installerat', body: `Swisha ${c.amount} kr till ${data.swish} med meddelandet "${msg.slice(0, 50)}".` });
+    }
+  };
+
+  const report = async (c: Charge) => {
+    try {
+      await api('my-charges', { method: 'POST', body: { id: c.id } });
+      toast({ title: 'Tack!', body: 'Emma markerar betalningen när hon sett den, sedan kommer kvittot här.' });
+      reload();
+    } catch (e) {
+      toast({ title: 'Det gick inte', body: (e as Error).message });
+    }
   };
 
   return (
@@ -437,10 +466,20 @@ export function PayScreen() {
                 {c.amount} kr{c.due_on ? ` · senast ${shortDate(c.due_on)}` : ''}
               </P>
             </View>
-            <Pill tone="warn" text="Att betala" />
+            <Pill tone={c.reported ? 'accent' : 'warn'} text={c.reported ? 'Swishad' : 'Att betala'} />
           </Row>
-          <Button small title={`Betala ${c.amount} kr med Swish`} onPress={() => swish(c)} style={{ marginTop: 12, alignSelf: 'flex-start' }} />
-          <P muted style={{ marginTop: 6, fontSize: 13 }}>Emma markerar betalningen när den kommit in, sedan syns kvittot här.</P>
+          {c.reported ? (
+            <P muted style={{ marginTop: 10 }}>Du har swishat. Emma markerar betalningen när hon sett den, och sedan kommer kvittot här.</P>
+          ) : (
+            <>
+              <Button title={`Betala ${c.amount} kr med Swish`} onPress={() => pay(c)} style={{ marginTop: 12 }} />
+              {opened[c.id] ? (
+                <Button variant="secondary" title="Jag har swishat" onPress={() => report(c)} style={{ marginTop: 8 }} />
+              ) : (
+                <P muted style={{ marginTop: 6, fontSize: 13 }}>Swish öppnas med belopp och meddelande ifyllda. Du godkänner bara.</P>
+              )}
+            </>
+          )}
         </Card>
       ))}
       {!unpaid.length && (

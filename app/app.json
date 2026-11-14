@@ -8,7 +8,12 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.starkmamma.app"
+      "bundleIdentifier": "com.starkmamma.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "swish"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

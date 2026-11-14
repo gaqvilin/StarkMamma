@@ -15,7 +15,7 @@ Koden är klar och databasen hos Neon är uppdaterad med alla tabeller. Det som 
 | `MAIL_FROM` | Avsändaren, till exempel `StarkMamma <no-reply@starkmamma.com>`. Domänen måste verifieras i Resend med några DNS-poster. Tills dess går det att testa med Resends egen testavsändare | Ja |
 | `PUBLIC_URL` | Admin-adressen, till exempel `https://starkmamma-admin.vercel.app` | Ja |
 | `CRON_SECRET` | En slumpad sträng. Vercel skickar den till den dagliga påminnelsen kl 17 | Ja |
-| `SWISH_NUMBER` | StarkMammas Swish-nummer, som visas för deltagarna under Betala | Ja |
+| `SWISH_NUMBER` | StarkMammas Swish-nummer. Knappen Betala i appen öppnar Swish med det numret, beloppet och ett meddelande ifyllda | Ja |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web). Ange `PUBLIC_URL/api/oauth-callback` som omdirigeringsadress | Nej, Google-knappen visas bara om de finns |
 | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | developers.facebook.com → Skapa app → Facebook Login. Samma omdirigeringsadress. Appen kräver en länk till en integritetspolicy innan den kan aktiveras | Nej |
 
@@ -51,4 +51,4 @@ Admin finns då på http://localhost:5173. Logga in med `starkmammavarberg@gmail
 cd admin && npm test
 ```
 
-Det kör 33 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar och inloggning.
+Det kör 34 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar och inloggning.

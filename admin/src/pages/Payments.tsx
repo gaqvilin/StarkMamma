@@ -14,6 +14,7 @@ interface Charge {
   paid_on: string | null;
   method: string | null;
   receipt_number: number | null;
+  reported_at: string | null;
 }
 
 const METHOD: Record<string, string> = { swish: 'Swish', bank: 'Bank', cash: 'Kontant', other: 'Annat' };
@@ -35,6 +36,7 @@ export function PaymentsPage() {
 
   const unpaid = all.filter((c) => c.status === 'unpaid');
   const overdue = unpaid.filter((c) => c.due_on && c.due_on < today);
+  const reported = unpaid.filter((c) => c.reported_at);
   const paidSum = all.filter((c) => c.status === 'paid').reduce((a, c) => a + c.amount, 0);
 
   const pay = async (id: string, method: string) => {
@@ -66,6 +68,12 @@ export function PaymentsPage() {
         </div>
       </header>
       {msg && <p className="ok-text">{msg}</p>}
+      {reported.length > 0 && (
+        <div className="card ack warn">
+          <strong>{reported.length} säger att de har swishat</strong>
+          <span className="muted small-text">Kontrollera i Swish-appen eller på banken och markera dem som betalda. De ligger överst i listan.</span>
+        </div>
+      )}
 
       <div className="stats">
         <div className="card stat"><span className="stat-n ok">{kr(paidSum)}</span><span className="muted">inbetalt</span></div>
@@ -111,6 +119,8 @@ export function PaymentsPage() {
                     <span className="chip ok">
                       Betald {c.paid_on ? shortDate(c.paid_on) : ''} · {METHOD[c.method ?? ''] ?? ''} · kvitto {c.receipt_number}
                     </span>
+                  ) : c.reported_at ? (
+                    <span className="chip accent">Swishat enligt deltagaren {c.reported_at.slice(5)}</span>
                   ) : (
                     <span className="chip warn">Obetald</span>
                   )}

@@ -121,6 +121,8 @@ export interface Charge {
   due_on: string | null;
   receipt_number: number | null;
   paid_on: string | null;
+  /** Deltagaren har tryckt "Jag har swishat" och väntar på att Emma ser betalningen. */
+  reported: boolean;
 }
 
 // ---- Datum ----

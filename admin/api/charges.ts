@@ -11,13 +11,14 @@ export async function GET(request: Request) {
   const q = await db();
   const charges = await q(
     `select c.id, c.description, c.amount, c.kind, c.status, to_char(c.due_on, 'YYYY-MM-DD') as due_on,
+       to_char(c.reported_paid_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD HH24.MI') as reported_at,
        p.id as person_id, p.name, p.phone,
        (select to_char(max(paid_at) at time zone 'Europe/Stockholm', 'YYYY-MM-DD') from payments where charge_id = c.id) as paid_on,
        (select max(method) from payments where charge_id = c.id) as method,
        (select max(receipt_number) from payments where charge_id = c.id) as receipt_number
      from charges c join people p on p.id = c.person_id
      where c.status <> 'cancelled' and ($1 = 'all' or c.status = $1)
-     order by (c.status = 'unpaid') desc, c.due_on nulls last, p.name`,
+     order by (c.status = 'unpaid') desc, (c.reported_paid_at is not null) desc, c.due_on nulls last, p.name`,
     [status],
   );
   return json({ charges });

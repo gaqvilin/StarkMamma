@@ -262,6 +262,18 @@ describe('betalningar och notiser', () => {
     expect((await call('charges', 'GET', emma, undefined, '?status=unpaid')).data.charges.some((c: { id: string }) => c.id === id)).toBe(true);
   });
 
+  it('deltagaren meddelar att hon swishat, och Emma ser det överst', async () => {
+    const mine = (await call('my-charges', 'GET', sara)).data.charges.filter((c: { status: string }) => c.status === 'unpaid');
+    const c = mine[mine.length - 1];
+    expect((await call('my-charges', 'POST', sara, { id: c.id })).status).toBe(200);
+    expect((await call('my-charges', 'GET', sara)).data.charges.find((x: { id: string }) => x.id === c.id).reported).toBe(true);
+    const unpaid = (await call('charges', 'GET', emma, undefined, '?status=unpaid')).data.charges;
+    expect(unpaid[0]).toMatchObject({ id: c.id });
+    expect(unpaid[0].reported_at).toBeTruthy();
+    const other = await login('annan.person@example.com');
+    expect((await call('my-charges', 'POST', other, { id: c.id })).status).toBe(404); // inte hennes betalning
+  });
+
   it('påminnelse till alla som inte betalat, och deltagaren kan markera notisen som läst', async () => {
     const r = await call('notices', 'POST', emma, { title: 'Påminnelse', body: 'Betala senast på tisdag.', audience: 'unpaid' });
     expect(r.data.recipients).toBeGreaterThan(0);

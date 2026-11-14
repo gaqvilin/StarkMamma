@@ -10,6 +10,7 @@
 | `migrations/004_identities.sql` | Kopplingar till Google- och Facebook-konton |
 | `migrations/006_operations.sql` | Vardagsdrift: föregående omgång (för förtur), flyttade pass, bokningar kopplade till klippkort och avgifter, betalningskrav kopplade till anmälan |
 | `migrations/007_acknowledgements.sql` | Notiser som kräver bekräftelse ("Jag har läst") och påminnelser |
+| `migrations/008_reported_payments.sql` | Deltagaren kan meddela att hon har swishat |
 | `migrations/005_self_signup.sql` | Egen registrering: kontostatus (väntar/aktiv/avböjd) och koder till nya e-postadresser |
 | `migrations/002_seed_ct_v45_51.sql` | Emma som tränare och CT-omgång v 45–51 2026 med priser, 10 grupper och 70 pass, inklusive de flyttade passen v 47 och v 51 |
 
