@@ -178,6 +178,37 @@ describe('samtidiga anrop', () => {
   });
 });
 
+describe('fusk med tillgodo och klipp', () => {
+  it('återbud och sedan "Jag kommer" ger inte både plats och tillgodo-pass', async () => {
+    const s = (await call('my-schedule', 'GET', ebba)).data.sessions.find((x: { ordinary: boolean; my_status: string; in_time: boolean }) => x.ordinary && x.my_status === 'booked' && x.in_time);
+    const before = (await call('my-schedule', 'GET', ebba)).data.credits;
+    await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'cancel' });
+    expect((await call('my-schedule', 'GET', ebba)).data.credits).toBe(before + 1);
+    expect((await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'attend' })).status).toBe(400);
+    expect((await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'undo' })).status).toBe(200);
+    expect((await call('my-schedule', 'GET', ebba)).data.credits).toBe(before);
+  });
+
+  it('Emma som markerar närvaro efter ett återbud tar bort tillgodo-passet', async () => {
+    const s = (await call('my-schedule', 'GET', ebba)).data.sessions.find((x: { ordinary: boolean; my_status: string; in_time: boolean }) => x.ordinary && x.my_status === 'booked' && x.in_time);
+    const before = (await call('my-schedule', 'GET', ebba)).data.credits;
+    await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'cancel' });
+    await call('booking', 'POST', emma, { sessionId: s.id, personId: ebba.id, action: 'attended' });
+    expect((await call('my-schedule', 'GET', ebba)).data.credits).toBe(before);
+  });
+
+  it('samtidiga avbokningar av ett klipp-pass ger bara tillbaka ett klipp', async () => {
+    const c = await call('charges', 'POST', emma, { personId: ebba.id, description: '10-kort', amount: 1200, kind: 'punch_card' });
+    await call('charges-pay', 'POST', emma, { id: c.data.id });
+    const punch = (await call('my-schedule', 'GET', ebba)).data.punch;
+    const free = (await call('bookable', 'GET', ebba)).data.sessions.find((x: { booked: number; capacity: number; mine: boolean }) => x.booked < x.capacity && !x.mine);
+    await call('my-booking', 'POST', ebba, { sessionId: free.id, action: 'book', source: 'punch_card' });
+    expect((await call('my-schedule', 'GET', ebba)).data.punch).toBe(punch - 1);
+    await Promise.all([1, 2, 3].map(() => call('my-booking', 'POST', ebba, { sessionId: free.id, action: 'cancel' })));
+    expect((await call('my-schedule', 'GET', ebba)).data.punch).toBe(punch);
+  });
+});
+
 describe('tid och regler', () => {
   it('man kan inte avboka eller boka ett pass som redan börjat', async () => {
     const s = (await call('my-schedule', 'GET', anna)).data.sessions[0];

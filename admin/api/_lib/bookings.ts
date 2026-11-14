@@ -117,10 +117,16 @@ export async function cancel(
   } else {
     const b = st.booking!;
     if (inTime) {
-      if (b.source === 'credit') await q(`update credits set used_booking_id = null where used_booking_id = $1`, [b.id]);
-      if (b.punch_card_id) await q(`update punch_cards set remaining = remaining + 1 where id = $1`, [b.punch_card_id]);
-      if (b.charge_id) await q(`update charges set status = 'cancelled' where id = $1 and status = 'unpaid'`, [b.charge_id]);
-      await q(`delete from bookings where id = $1`, [b.id]);
+      // Ta bort bokningen först och återbetala bara om det var just detta anrop som tog bort den,
+      // så att två samtidiga avbokningar inte ger dubbel återbetalning.
+      const [gone] = await q<{ punch_card_id: string | null; charge_id: string | null; source: string }>(
+        `delete from bookings where id = $1 and status in ('booked', 'attending', 'attended') returning punch_card_id, charge_id, source`,
+        [b.id],
+      );
+      if (!gone) throw new RuleError('Du är inte bokad på passet');
+      if (gone.source === 'credit') await q(`update credits set used_booking_id = null where used_booking_id = $1`, [b.id]);
+      if (gone.punch_card_id) await q(`update punch_cards set remaining = remaining + 1 where id = $1`, [gone.punch_card_id]);
+      if (gone.charge_id) await q(`update charges set status = 'cancelled' where id = $1 and status = 'unpaid'`, [gone.charge_id]);
     } else {
       await q(`update bookings set status = 'cancelled_late', updated_at = now() where id = $1`, [b.id]);
     }
@@ -244,6 +250,15 @@ export async function setAttendance(q: Query, sessionId: string, personId: strin
   const s = await getSession(q, sessionId, now);
   const st = await state(q, s, personId);
   if (!st.member && !st.booking) throw new RuleError('Personen är inte bokad på passet');
+  // Efter ett återbud går det inte att bara säga "jag kommer": då skulle man behålla både platsen
+  // och tillgodo-passet. Ett återbud ångras via undoCancel, som tar bort tillgodo-passet och
+  // kontrollerar att platsen finns kvar.
+  if (st.booking && st.booking.status.startsWith('cancelled')) {
+    if (status === 'attending') throw new RuleError('Du har lämnat återbud. Ångra återbudet först.');
+    const [credit] = await q<{ used: string | null }>(`select used_booking_id as used from credits where from_booking_id = $1`, [st.booking.id]);
+    if (credit?.used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
+    await q(`delete from credits where from_booking_id = $1`, [st.booking.id]);
+  }
   if (st.member) {
     await q(
       `insert into bookings (session_id, person_id, source, status) values ($1, $2, 'ordinary', $3)
