@@ -1,11 +1,11 @@
 // GET  /api/notices -> skickade notiser
 // POST /api/notices {title, body, audience, page?: {heading, text, link?}}
-//   audience: 'all' | 'group:<uuid>'
-// Notisen sparas med en mottagarlista. Själva leveransen (Expo Push / Web Push, e-post som reserv)
-// kopplas på när deltagarappen registrerar push-token; tills dess står den som "väntar".
+//   audience: 'all' | 'unpaid' | 'group:<uuid>' | 'person:<uuid>'
+// Levereras som pushnotis till den som har appen, annars via e-post (se _lib/notify.ts).
 import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
+import { sendNotice } from './_lib/notify.js';
 
 type Input = { title?: string; body?: string; audience?: string; page?: { heading?: string; text?: string; link?: string } };
 
@@ -33,7 +33,8 @@ export async function POST(request: Request) {
   if (!title || !text) return bad('Rubrik och meddelande behövs');
   if (title.length > 120 || text.length > 400) return bad('Notisen är för lång');
   const groupId = audience.startsWith('group:') ? audience.slice(6) : null;
-  if (audience !== 'all' && !isUuid(groupId)) return bad('Okänd mottagargrupp');
+  const personId = audience.startsWith('person:') ? audience.slice(7) : null;
+  if (!['all', 'unpaid'].includes(audience) && !isUuid(groupId) && !isUuid(personId)) return bad('Okänd mottagargrupp');
 
   const page = input.page;
   const heading = page?.heading?.trim() || null;
@@ -43,21 +44,20 @@ export async function POST(request: Request) {
   if (link && !/^https:\/\/\S+$/i.test(link)) return bad('Länken måste börja med https://');
 
   const q = await db();
-  const [n] = await q<{ id: string }>(
-    `insert into notices (title, body, page_heading, page_text, page_link, audience, sent_by)
-     values ($1, $2, $3, $4, $5, $6, (select id from people where role = 'trainer' limit 1)) returning id`,
-    [title, text, heading, pageText, link, audience],
-  );
-  const recipients = await q<{ count: number }>(
+  const people = await q<{ id: string }>(
     groupId
-      ? `with ins as (insert into notice_recipients (notice_id, person_id)
-           select $1, gm.person_id from group_members gm join people p on p.id = gm.person_id
-           where gm.group_id = $2 and p.status = 'active' on conflict do nothing returning 1)
-         select count(*)::int as count from ins`
-      : `with ins as (insert into notice_recipients (notice_id, person_id)
-           select $1, id from people where role = 'participant' and status = 'active' on conflict do nothing returning 1)
-         select count(*)::int as count from ins`,
-    groupId ? [n.id, groupId] : [n.id],
+      ? `select gm.person_id as id from group_members gm join people p on p.id = gm.person_id where gm.group_id = $1 and p.status = 'active'`
+      : personId
+        ? `select id from people where id = $1`
+        : audience === 'unpaid'
+          ? `select distinct p.id from charges c join people p on p.id = c.person_id where c.status = 'unpaid' and p.status = 'active'`
+          : `select id from people where role = 'participant' and status = 'active'`,
+    groupId ? [groupId] : personId ? [personId] : [],
   );
-  return json({ id: n.id, recipients: recipients[0]?.count ?? 0 }, 201);
+  const n = await sendNotice(
+    q,
+    { title, body: text, audience, page: heading && pageText ? { heading, text: pageText, link } : null },
+    people.map((p) => p.id),
+  );
+  return json({ id: n.id, recipients: n.recipients }, 201);
 }

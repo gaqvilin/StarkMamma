@@ -61,3 +61,53 @@ insert into people (name, phone, email, status, signed_up_via, created_at) value
   ('Lovisa Wik', '0705550101', 'lovisa.wik@example.com', 'pending', 'facebook', timestamp '2026-11-07 20:14'),
   ('Nora Falk', '0705550102', 'nora.falk@example.com', 'pending', 'google', timestamp '2026-11-08 07:42'),
   ('Tove Sand', null, 'tove.sand@example.com', 'pending', 'email', timestamp '2026-11-08 11:05');
+
+-- Betalningar för pågående omgång: de flesta har betalat.
+insert into charges (person_id, description, amount, due_on, kind, round_id, status)
+select distinct on (gm.person_id) gm.person_id, 'CT-omgång v 45–51 2026, 1 gång/vecka', 699, date '2026-10-27', 'round', g.round_id,
+       case when abs(hashtext(gm.person_id::text)) % 7 = 0 then 'unpaid' else 'paid' end
+from group_members gm join groups g on g.id = gm.group_id;
+insert into payments (charge_id, amount, method, paid_at)
+select id, amount, 'swish', timestamp '2026-10-25 12:00' from charges where status = 'paid';
+
+-- Nästa omgång med anmälan öppen och ett antal anmälningar.
+insert into rounds (program_id, name, starts_on, ends_on, registration_opens_at, priority_until, pay_deadline, installment_deadline, status, previous_round_id)
+select program_id, 'CT-omgång v 2–8 2027', date '2027-01-11', date '2027-02-28',
+       timestamp '2026-11-13 08:00' at time zone 'Europe/Stockholm', timestamp '2026-11-14 20:00' at time zone 'Europe/Stockholm',
+       date '2026-12-22', date '2027-01-22', 'open', id
+from rounds where name = 'CT-omgång v 45–51 2026';
+insert into price_tiers (round_id, per_week, price, first_installment)
+select n.id, t.per_week, t.price, t.first_installment from rounds n join price_tiers t on t.round_id = (select id from rounds where name = 'CT-omgång v 45–51 2026')
+where n.name = 'CT-omgång v 2–8 2027';
+insert into groups (round_id, weekday, start_time, place, capacity, min_participants)
+select n.id, g.weekday, g.start_time, g.place, g.capacity, g.min_participants
+from rounds n join groups g on g.round_id = n.previous_round_id where n.name = 'CT-omgång v 2–8 2027';
+insert into registrations (round_id, person_id, per_week, created_at, friend_name)
+select n.id, p.id, case when p.rn % 5 = 0 then 2 else 1 end,
+       timestamp '2026-11-13 08:00' at time zone 'Europe/Stockholm' + (p.rn * interval '37 seconds'),
+       case when p.rn = 3 then 'Hanna Holm' end
+from rounds n, (select id, row_number() over (order by name) as rn from people where role = 'participant' and status = 'active') p
+where n.name = 'CT-omgång v 2–8 2027' and p.rn <= 40;
+-- Förstahandsval: personens nuvarande grupp i motsvarande ny grupp; andrahand: nästa grupp samma dag.
+insert into registration_choices (registration_id, slot, rank, group_id)
+select r.id, s.slot, 1, ng.id
+from registrations r
+join rounds n on n.id = r.round_id
+cross join lateral generate_series(0, r.per_week - 1) as s(slot)
+join lateral (
+  select og.weekday, og.start_time from group_members gm join groups og on og.id = gm.group_id
+  where gm.person_id = r.person_id and og.round_id = n.previous_round_id limit 1
+) cur on true
+join lateral (
+  select g.id from groups g where g.round_id = n.id
+  order by (g.weekday = cur.weekday and g.start_time = cur.start_time) desc, abs(g.weekday - cur.weekday - s.slot * 2), g.start_time
+  offset s.slot limit 1
+) ng on true
+where n.name = 'CT-omgång v 2–8 2027'
+on conflict do nothing;
+insert into registration_choices (registration_id, slot, rank, group_id)
+select c.registration_id, c.slot, 2, alt.id
+from registration_choices c join groups g on g.id = c.group_id
+join lateral (select id from groups x where x.round_id = g.round_id and x.weekday = g.weekday and x.id <> g.id order by x.start_time desc limit 1) alt on true
+where c.rank = 1
+on conflict do nothing;

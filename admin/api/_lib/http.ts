@@ -1,7 +1,18 @@
+// Mobilappen anropar API:et med Bearer-token (ingen cookie), så öppen CORS är ofarlig:
+// cookie-inloggningen i admin skickas aldrig med anrop från andra ursprung.
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': 'authorization, content-type',
+  'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
+};
+
+/** Svar på CORS-förfrågan (preflight). Exporteras som OPTIONS i varje endpoint som appen använder. */
+export const OPTIONS = async () => new Response(null, { status: 204, headers: CORS });
+
 export function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...CORS, ...headers },
   });
 }
 

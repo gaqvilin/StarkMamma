@@ -87,3 +87,11 @@ export async function requireTrainer(request: Request): Promise<Response | null>
   if (user.role !== 'trainer') return bad('Bara för tränaren', 403);
   return null;
 }
+
+/** Kräver en inloggad person. Med active: true måste kontot också vara aktiverat av Emma. */
+export async function requireUser(request: Request, opts: { active?: boolean } = {}): Promise<User | Response> {
+  const user = await currentUser(request);
+  if (!user) return bad('Inte inloggad', 401);
+  if (opts.active && user.status !== 'active') return bad('Ditt konto väntar på att Emma aktiverar det', 403);
+  return user;
+}

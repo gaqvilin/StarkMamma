@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Session, addDays, api, dayLabel, isoWeek, mondayOf, shortDate } from '../api';
+import { Person, Session, addDays, api, dayLabel, isoWeek, mondayOf, shortDate } from '../api';
 
 interface Roster {
   session: Session;
@@ -21,9 +21,10 @@ export function WeekPage() {
   const [sessions, setSessions] = useState<Session[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
 
+  const loadWeek = () => api<{ sessions: Session[] }>(`week?from=${from}`).then((r) => setSessions(r.sessions));
   useEffect(() => {
     setSessions(null);
-    api<{ sessions: Session[] }>(`week?from=${from}`).then((r) => setSessions(r.sessions));
+    loadWeek();
   }, [from]);
 
   const days = useMemo(() => {
@@ -77,7 +78,7 @@ export function WeekPage() {
         </div>
       )}
 
-      {open && <Drawer id={open} onClose={() => setOpen(null)} />}
+      {open && <Drawer id={open} onClose={() => setOpen(null)} onChanged={loadWeek} />}
     </div>
   );
 }
@@ -118,12 +119,35 @@ function SessionCard({ s, active, onClick }: { s: Session; active: boolean; onCl
   );
 }
 
-function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
+const ACTIONS: { action: string; label: string; when: (status: string) => boolean }[] = [
+  { action: 'cancel_in_time', label: 'Återbud (tillgodo)', when: (st) => !st.startsWith('cancelled') },
+  { action: 'cancel_late', label: 'Sent återbud', when: (st) => !st.startsWith('cancelled') },
+  { action: 'restore', label: 'Ångra återbud', when: (st) => st.startsWith('cancelled') },
+  { action: 'attended', label: 'Närvarade', when: (st) => !st.startsWith('cancelled') && st !== 'attended' },
+  { action: 'no_show', label: 'Kom inte', when: (st) => !st.startsWith('cancelled') && st !== 'no_show' },
+];
+
+function Drawer({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
   const [data, setData] = useState<Roster | null>(null);
+  const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const load = () => api<Roster>(`session?id=${id}`).then(setData);
   useEffect(() => {
     setData(null);
-    api<Roster>(`session?id=${id}`).then(setData);
+    setEditing(false);
+    load();
   }, [id]);
+
+  const act = async (personId: string, action: string, source?: string) => {
+    setError('');
+    try {
+      await api('booking', { method: 'POST', body: { sessionId: id, personId, action, source } });
+      await load();
+      onChanged();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   return (
     <aside className="drawer" aria-label="Pass">
@@ -137,8 +161,24 @@ function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
           </h2>
           <p className="muted">
             {data.session.place}
+            {data.session.status === 'cancelled' ? ' · Inställt' : ''}
             {data.session.note ? ` · ${data.session.note}` : ''}
           </p>
+          {editing ? (
+            <EditSession
+              session={data.session}
+              onCancel={() => setEditing(false)}
+              onSaved={async () => {
+                setEditing(false);
+                await load();
+                onChanged();
+              }}
+            />
+          ) : (
+            <button className="btn small" onClick={() => setEditing(true)}>Ändra tid, lokal eller ställ in</button>
+          )}
+          {error && <p className="error">{error}</p>}
+
           <h3>Deltagare ({data.roster.filter((r) => !r.status.startsWith('cancelled')).length}/{data.session.capacity})</h3>
           <table className="table compact">
             <tbody>
@@ -149,23 +189,41 @@ function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
                     <td>
                       {r.name}
                       {r.source !== 'ordinary' && <span className="chip accent small">extra</span>}
+                      <div className="muted small-text">{r.phone}</div>
                     </td>
-                    <td className="muted">{r.phone}</td>
                     <td>
                       <span className={`chip ${tone}`}>{label}</span>
+                    </td>
+                    <td className="right">
+                      <select
+                        aria-label={`Ändra ${r.name}`}
+                        className="mini"
+                        value=""
+                        onChange={(e) => e.target.value && act(r.id, e.target.value)}
+                      >
+                        <option value="">Ändra…</option>
+                        {ACTIONS.filter((a) => a.when(r.status)).map((a) => (
+                          <option key={a.action} value={a.action}>{a.label}</option>
+                        ))}
+                      </select>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+
+          <AddPerson existing={new Set(data.roster.map((r) => r.id))} onAdd={(pid, source) => act(pid, 'add', source)} />
+
           {data.queue.length > 0 && (
             <>
               <h3>Kö</h3>
               <ol className="queue">
                 {data.queue.map((q) => (
                   <li key={q.id}>
-                    {q.name} <span className="muted">{q.phone}</span>
+                    {q.name} <span className="muted">{q.phone}</span>{' '}
+                    <button className="link" onClick={() => act(q.id, 'add', 'drop_in')}>Lägg till</button>
+                    <button className="link" onClick={() => act(q.id, 'queue_remove')}>Ta bort</button>
                   </li>
                 ))}
               </ol>
@@ -174,5 +232,90 @@ function Drawer({ id, onClose }: { id: string; onClose: () => void }) {
         </>
       )}
     </aside>
+  );
+}
+
+function EditSession({ session, onCancel, onSaved }: { session: Session; onCancel: () => void; onSaved: () => void }) {
+  const [date, setDate] = useState(session.date);
+  const [time, setTime] = useState(session.time.replace('.', ':'));
+  const [place, setPlace] = useState(session.place);
+  const [cancelled, setCancelled] = useState(session.status === 'cancelled');
+  const [note, setNote] = useState('');
+  const [notify, setNotify] = useState(true);
+  const [error, setError] = useState('');
+  const save = async () => {
+    setError('');
+    try {
+      await api('session', { method: 'PUT', body: { id: session.id, date, time, place, cancelled, note, notify } });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  return (
+    <div className="card edit form">
+      <div className="row">
+        <div style={{ flex: 1 }}>
+          <label htmlFor="e-date">Datum</label>
+          <input id="e-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div style={{ width: 110 }}>
+          <label htmlFor="e-time">Tid</label>
+          <input id="e-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
+      </div>
+      <label htmlFor="e-place">Lokal</label>
+      <select id="e-place" value={place} onChange={(e) => setPlace(e.target.value)}>
+        <option>Gymmet</option>
+        <option>Ladan</option>
+      </select>
+      <label className="toggle">
+        <input type="checkbox" checked={cancelled} onChange={(e) => setCancelled(e.target.checked)} /> Ställ in passet
+      </label>
+      <label htmlFor="e-note">Meddelande (valfritt)</label>
+      <input id="e-note" value={note} placeholder="T.ex. pga vädret" onChange={(e) => setNote(e.target.value)} />
+      <label className="toggle">
+        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Skicka notis till de bokade
+      </label>
+      {error && <p className="error">{error}</p>}
+      <div className="row">
+        <button className="btn primary" onClick={save}>Spara</button>
+        <button className="btn" onClick={onCancel}>Avbryt</button>
+      </div>
+    </div>
+  );
+}
+
+function AddPerson({ existing, onAdd }: { existing: Set<string>; onAdd: (personId: string, source: string) => void }) {
+  const [people, setPeople] = useState<Person[] | null>(null);
+  const [query, setQuery] = useState('');
+  const [source, setSource] = useState('drop_in');
+  const open = people !== null;
+  const matches = (people ?? [])
+    .filter((p) => p.status === 'active' && !existing.has(p.id))
+    .filter((p) => query.length > 1 && p.name.toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 6);
+  if (!open)
+    return (
+      <button className="btn small" onClick={() => api<{ people: Person[] }>('people').then((r) => setPeople(r.people))}>
+        Lägg till person på passet
+      </button>
+    );
+  return (
+    <div className="card edit form">
+      <label htmlFor="add-q">Lägg till person</label>
+      <input id="add-q" autoFocus placeholder="Sök namn" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <label htmlFor="add-src">Betalas med</label>
+      <select id="add-src" value={source} onChange={(e) => setSource(e.target.value)}>
+        <option value="drop_in">Drop-in (140 kr läggs till under Betalningar)</option>
+        <option value="credit">Tillgodo-pass</option>
+        <option value="punch_card">Klipp på klippkort</option>
+      </select>
+      {matches.map((p) => (
+        <button key={p.id} className="btn small" onClick={() => { onAdd(p.id, source); setPeople(null); setQuery(''); }}>
+          Lägg till {p.name}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -3,6 +3,8 @@ import { FormEvent, useEffect, useState } from 'react';
 import { api } from './api';
 import { FacebookMark, GoogleMark } from './brand';
 import { NoticesPage } from './pages/Notices';
+import { PaymentsPage } from './pages/Payments';
+import { RegistrationsPage } from './pages/Registrations';
 import { PeoplePage } from './pages/People';
 import { RoundPage } from './pages/Round';
 import { WeekPage } from './pages/Week';
@@ -10,7 +12,9 @@ import { WeekPage } from './pages/Week';
 const PAGES = [
   { key: 'week', label: 'Veckan', Page: WeekPage },
   { key: 'people', label: 'Deltagare', Page: PeoplePage },
-  { key: 'round', label: 'Omgång', Page: RoundPage },
+  { key: 'registrations', label: 'Anmälan', Page: RegistrationsPage },
+  { key: 'payments', label: 'Betalningar', Page: PaymentsPage },
+  { key: 'round', label: 'Omgångar', Page: RoundPage },
   { key: 'notices', label: 'Notiser', Page: NoticesPage },
 ] as const;
 

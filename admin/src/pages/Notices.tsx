@@ -33,6 +33,10 @@ export function NoticesPage() {
 
   const audienceLabel = (a: string) => {
     if (a === 'all') return 'Alla deltagare';
+    if (a === 'unpaid') return 'Alla som inte betalat';
+    if (a.startsWith('person:')) return 'En person';
+    if (a.startsWith('session:')) return 'De bokade på ett pass';
+    if (a.startsWith('waitlist:')) return 'Kön till ett pass';
     const g = groups.find((x) => `group:${x.id}` === a);
     return g ? groupLabel(g) : a;
   };
@@ -75,6 +79,7 @@ export function NoticesPage() {
           <label htmlFor="n-aud">Mottagare</label>
           <select id="n-aud" value={audience} onChange={(e) => setAudience(e.target.value)}>
             <option value="all">Alla deltagare</option>
+            <option value="unpaid">Alla som inte betalat</option>
             {groups.map((g) => (
               <option key={g.id} value={`group:${g.id}`}>
                 {groupLabel(g)} ({g.members})

@@ -19,3 +19,4 @@ export async function POST(request: Request) {
   }
   return json({ ok: true });
 }
+export { OPTIONS } from './_lib/http.js';

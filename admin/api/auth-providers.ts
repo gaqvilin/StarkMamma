@@ -5,3 +5,4 @@ import { json } from './_lib/http.js';
 export async function GET() {
   return json({ providers: PROVIDERS.filter(configured) });
 }
+export { OPTIONS } from './_lib/http.js';

@@ -33,3 +33,4 @@ export async function POST(request: Request) {
   const token = issueToken(person.id);
   return json({ token, user }, 200, { 'set-cookie': sessionCookie(token) });
 }
+export { OPTIONS } from './_lib/http.js';

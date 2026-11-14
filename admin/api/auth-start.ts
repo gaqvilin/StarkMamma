@@ -28,3 +28,4 @@ export async function POST(request: Request) {
   );
   return json(channel === 'demo' ? { sent: true, demoCode: code } : { sent: true });
 }
+export { OPTIONS } from './_lib/http.js';

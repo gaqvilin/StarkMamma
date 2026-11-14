@@ -1,4 +1,4 @@
-// GET /api/round -> pågående omgång med priser och grupper (antal medlemmar per grupp).
+// GET /api/round[?id=] -> pågående (eller vald) omgång med priser och grupper (antal medlemmar per grupp).
 import { requireTrainer } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { json } from './_lib/http.js';
@@ -6,6 +6,7 @@ import { json } from './_lib/http.js';
 export async function GET(request: Request) {
   const denied = await requireTrainer(request);
   if (denied) return denied;
+  const id = new URL(request.url).searchParams.get('id');
   const q = await db();
   const [round] = await q(
     `select r.id, r.name, r.status, p.name as program,
@@ -13,7 +14,9 @@ export async function GET(request: Request) {
        to_char(r.pay_deadline, 'YYYY-MM-DD') as pay_deadline,
        to_char(r.installment_deadline, 'YYYY-MM-DD') as installment_deadline
      from rounds r join programs p on p.id = r.program_id
+     where ($1::uuid is null or r.id = $1::uuid)
      order by (r.status = 'running') desc, r.starts_on desc limit 1`,
+    [id && /^[0-9a-f-]{36}$/i.test(id) ? id : null],
   );
   if (!round) return json({ round: null, prices: [], groups: [] });
   const prices = await q(

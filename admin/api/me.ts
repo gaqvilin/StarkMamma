@@ -5,3 +5,4 @@ import { json } from './_lib/http.js';
 export async function GET(request: Request) {
   return json({ user: await currentUser(request) });
 }
+export { OPTIONS } from './_lib/http.js';
