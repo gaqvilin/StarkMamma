@@ -45,3 +45,4 @@ export async function GET(request: Request) {
   const suggestion = Object.fromEntries(allocations.map((a) => [a.id, a]));
   return json({ round, groups, registrations: regs, suggestion, fill });
 }
+export { OPTIONS } from './_lib/http.js';

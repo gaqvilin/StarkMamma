@@ -93,3 +93,4 @@ export async function POST(request: Request) {
   }
   return json({ confirmed, waitlisted });
 }
+export { OPTIONS } from './_lib/http.js';

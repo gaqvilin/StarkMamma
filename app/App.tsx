@@ -1,14 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Notice, api } from './src/api';
+import { AuthProvider, useAuth } from './src/auth';
+import { BellIcon } from './src/icons';
+import { onNotificationOpened, registerForPush } from './src/push';
+import { LoginScreen, PendingScreen, ProfileScreen } from './src/screens/Login';
 import { BookScreen, HomeScreen, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
-import { LoginScreen, Role } from './src/screens/Login';
-import { Notice, StoreProvider, useStore } from './src/store';
-import { BellIcon } from './src/icons';
 import { colors } from './src/theme';
+import { ToastProvider } from './src/toast';
 
+type Role = 'deltagare' | 'tränare';
 
 const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentType }[]> = {
   deltagare: [
@@ -25,82 +29,89 @@ const TABS: Record<Role, { key: string; label: string; Screen: React.ComponentTy
   ],
 };
 
-function PushBanner({ onOpen }: { onOpen: (n: Notice) => void }) {
-  const { banner, dispatch } = useStore();
-  const y = useRef(new Animated.Value(-140)).current;
-  useEffect(() => {
-    if (!banner) return;
-    y.setValue(-140);
-    Animated.spring(y, { toValue: 0, useNativeDriver: true }).start();
-    const t = setTimeout(() => dispatch({ type: 'dismissBanner' }), 5000);
-    return () => clearTimeout(t);
-  }, [banner, dispatch, y]);
-  if (!banner) return null;
+function Logo() {
   return (
-    <Animated.View style={[styles.banner, { transform: [{ translateY: y }] }]}>
-      <Pressable onPress={() => { dispatch({ type: 'dismissBanner' }); onOpen(banner); }}>
-        <Text style={styles.bannerApp}>STARKMAMMA · nu</Text>
-        <Text style={styles.bannerTitle}>{banner.title}</Text>
-        <Text style={styles.bannerBody} numberOfLines={2}>{banner.body}</Text>
-      </Pressable>
-    </Animated.View>
+    <View style={styles.logo}>
+      <Text style={styles.logoStark}>STARK</Text>
+      <Text style={styles.logoMamma}>mamma</Text>
+    </View>
   );
 }
 
-function Toast() {
-  const { toast, dispatch } = useStore();
+/** Registrerar mobilen för pushnotiser och öppnar rätt notis när man trycker på en. */
+function usePush(onOpen: (noticeId: string | undefined) => void) {
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => dispatch({ type: 'dismissToast' }), 4500);
-    return () => clearTimeout(t);
-  }, [toast, dispatch]);
-  if (!toast) return null;
-  return (
-    <Pressable onPress={() => dispatch({ type: 'dismissToast' })} style={styles.toast}>
-      <Text style={styles.bannerTitle}>{toast.title}</Text>
-      <Text style={styles.bannerBody}>{toast.body}</Text>
-    </Pressable>
-  );
+    if (Platform.OS === 'web') return;
+    registerForPush()
+      .then((token) => token && api('push-token', { method: 'POST', body: { token, kind: 'expo' } }))
+      .catch(() => {});
+    return onNotificationOpened(onOpen);
+  }, [onOpen]);
 }
 
-// Vilken vy man får avgörs av inloggningen: Emma (tränare) kommer till admin, alla andra till deltagarvyn.
-function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
-  const [tab, setTab] = useState<Record<Role, string>>({ deltagare: 'home', tränare: 'roster' });
+function Shell({ role }: { role: Role }) {
+  const { user, signOut } = useAuth();
   const tabs = TABS[role];
-  const current = tabs.find((t) => t.key === tab[role]) ?? tabs[0];
-  const { Screen } = current;
+  const [tab, setTab] = useState(tabs[0].key);
+  const [view, setView] = useState<'tabs' | 'inbox' | 'info'>('tabs');
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [openNotice, setOpenNotice] = useState<Notice | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
-  const { inbox, openNotice, dispatch } = useStore();
-  const [showInbox, setShowInbox] = useState(false);
-  const [seen, setSeen] = useState(inbox.length - 1);
-  const unread = Math.max(0, inbox.length - seen);
-  const showInfo = role === 'deltagare' && !!openNotice;
+  const current = tabs.find((t) => t.key === tab) ?? tabs[0];
+  const unread = notices.filter((n) => !n.read).length;
+
+  const loadNotices = useCallback(
+    () => api<{ notices: Notice[] }>('my-notices').then((r) => setNotices(r.notices)).catch(() => {}),
+    [],
+  );
+  useEffect(() => {
+    if (role !== 'deltagare') return;
+    loadNotices();
+    const t = setInterval(loadNotices, 60000);
+    return () => clearInterval(t);
+  }, [role, loadNotices]);
 
   const toTop = () => scroll.current?.scrollTo({ y: 0, animated: false });
-  const go = (r: Role, k: string) => {
-    setTab((t) => ({ ...t, [r]: k }));
-    setShowInbox(false);
-    if (openNotice) dispatch({ type: 'closeNotice' });
+  const open = (n: Notice) => {
+    api('my-notices', { method: 'POST', body: { id: n.id } }).catch(() => {});
+    setNotices((all) => all.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    if (n.page_heading) {
+      setOpenNotice(n);
+      setView('info');
+    } else setView('inbox');
     toTop();
   };
   const openInbox = () => {
-    if (openNotice) dispatch({ type: 'closeNotice' });
-    setShowInbox(true);
-    setSeen(inbox.length);
+    setView('inbox');
     toTop();
+    // Notiser utan informationssida räknas som lästa när man öppnat listan.
+    notices.filter((n) => !n.read && !n.page_heading).forEach((n) => api('my-notices', { method: 'POST', body: { id: n.id } }).catch(() => {}));
+    setNotices((all) => all.map((x) => (x.page_heading ? x : { ...x, read: true })));
   };
 
+  const onPushOpen = useCallback(
+    async (id: string | undefined) => {
+      const r = await api<{ notices: Notice[] }>('my-notices').catch(() => null);
+      if (!r) return;
+      setNotices(r.notices);
+      const n = r.notices.find((x) => x.id === id);
+      if (n) open(n);
+      else setView('inbox');
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  usePush(onPushOpen);
+
+  const Screen = current.Screen;
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoStark}>STARK</Text>
-          <Text style={styles.logoMamma}>mamma</Text>
-        </View>
+        <Logo />
         {role === 'tränare' ? (
-          <Pressable onPress={onLogout} accessibilityRole="button" style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.adminLabel}>Emma</Text>
+          <Pressable onPress={signOut} accessibilityRole="button" style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.adminLabel}>{user?.name.split(' ')[0]}</Text>
             <Text style={{ fontSize: 12, color: colors.accent, fontWeight: '700' }}>Logga ut</Text>
           </Pressable>
         ) : (
@@ -108,7 +119,7 @@ function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
             onPress={openInbox}
             accessibilityRole="button"
             accessibilityLabel={unread ? `Notiser, ${unread} olästa` : 'Notiser'}
-            style={[styles.bell, showInbox && !showInfo && { backgroundColor: '#EAE5DF' }]}
+            style={[styles.bell, view !== 'tabs' && { backgroundColor: '#EAE5DF' }]}
           >
             <BellIcon size={24} />
             {unread ? (
@@ -121,9 +132,15 @@ function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
-        {showInfo ? <InfoPageScreen /> : showInbox && role === 'deltagare' ? <InboxScreen /> : <Screen />}
-        {role === 'deltagare' && current.key === 'home' && !showInbox && !showInfo ? (
-          <Pressable onPress={onLogout} accessibilityRole="button" style={{ alignSelf: 'center', padding: 16 }}>
+        {view === 'info' && openNotice ? (
+          <InfoPageScreen notice={openNotice} onBack={() => setView('inbox')} />
+        ) : view === 'inbox' ? (
+          <InboxScreen notices={notices} onOpen={open} />
+        ) : (
+          <Screen key={tab} />
+        )}
+        {role === 'deltagare' && view === 'tabs' && current.key === 'home' ? (
+          <Pressable onPress={signOut} accessibilityRole="button" style={{ alignSelf: 'center', padding: 16 }}>
             <Text style={{ color: colors.muted, fontWeight: '700' }}>Logga ut</Text>
           </Pressable>
         ) : null}
@@ -132,9 +149,9 @@ function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
       <SafeAreaView edges={['bottom']} style={styles.tabBar}>
         <View style={{ flexDirection: 'row' }}>
           {tabs.map((t) => {
-            const active = t.key === current.key && !(role === 'deltagare' && (showInbox || showInfo));
+            const active = t.key === current.key && view === 'tabs';
             return (
-              <Pressable key={t.key} onPress={() => go(role, t.key)} style={styles.tab}>
+              <Pressable key={t.key} onPress={() => { setTab(t.key); setView('tabs'); toTop(); }} style={styles.tab}>
                 <View style={[styles.tabIndicator, active && { backgroundColor: colors.ink }]} />
                 <Text style={[styles.tabLabel, active && { color: colors.ink, fontWeight: '800' }]}>{t.label}</Text>
               </Pressable>
@@ -142,35 +159,58 @@ function Shell({ role, onLogout }: { role: Role; onLogout: () => void }) {
           })}
         </View>
       </SafeAreaView>
-
-      <Toast />
-      {role === 'deltagare' ? <PushBanner
-          onOpen={(n) => {
-            setSeen(inbox.length);
-            if (n.page) {
-              dispatch({ type: 'openNotice', id: n.id });
-              toTop();
-            } else openInbox();
-          }}
-        /> : null}
     </SafeAreaView>
   );
 }
 
+/** Väljer vy utifrån inloggningen: inloggning, profil, väntar på aktivering, deltagare eller Emma. */
+function Gate() {
+  const { user } = useAuth();
+  if (user === undefined)
+    return (
+      <SafeAreaView style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Logo />
+      </SafeAreaView>
+    );
+  if (!user)
+    return (
+      <SafeAreaView style={styles.root}>
+        <StatusBar style="dark" />
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <LoginScreen />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  if (user.needs_profile)
+    return (
+      <SafeAreaView style={styles.root}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <ProfileScreen />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  if (user.role === 'trainer') return <Shell role="tränare" />;
+  if (user.status !== 'active')
+    return (
+      <SafeAreaView style={styles.root}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <PendingScreen>
+            <SignupScreen />
+          </PendingScreen>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  return <Shell role="deltagare" />;
+}
+
 export default function App() {
-  const [role, setRole] = useState<Role | null>(null);
   return (
     <SafeAreaProvider>
-      <StoreProvider>
-        {role ? (
-          <Shell key={role} role={role} onLogout={() => setRole(null)} />
-        ) : (
-          <SafeAreaView style={styles.root}>
-            <StatusBar style="dark" />
-            <LoginScreen onDone={setRole} />
-          </SafeAreaView>
-        )}
-      </StoreProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <Gate />
+        </ToastProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

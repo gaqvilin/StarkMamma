@@ -37,3 +37,4 @@ export async function POST(request: Request) {
   await q(`insert into notice_recipients (notice_id, person_id) values ($1, $2)`, [n.id, input.id]);
   return json({ ok: true });
 }
+export { OPTIONS } from './_lib/http.js';

@@ -67,7 +67,7 @@ export interface User {
 }
 
 export const USER_SELECT = `select id, name, email, phone, role, status,
-  (coalesce(name, '') = '' or coalesce(phone, '') = '') as needs_profile from people`;
+  (role = 'participant' and (coalesce(name, '') = '' or coalesce(phone, '') = '')) as needs_profile from people`;
 
 export async function currentUser(request: Request): Promise<User | null> {
   if (!secret()) return null;

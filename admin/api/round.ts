@@ -31,3 +31,4 @@ export async function GET(request: Request) {
   );
   return json({ round, prices, groups });
 }
+export { OPTIONS } from './_lib/http.js';

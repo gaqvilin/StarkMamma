@@ -2,10 +2,19 @@
 
 Emmas del av StarkMamma, en webbapp för datorn. Deltagarna använder mobilappen i `../app`.
 
-- **Veckan:** alla pass i veckan med beläggning, återbud, lediga platser och kö. Tryck på ett pass för deltagarlista med telefonnummer och kö
-- **Deltagare:** aktivera nya konton som skapats i appen, sök, lägg till och ändra deltagare, och välj grupper med antal platser per grupp
-- **Omgång:** priser, betalningsdagar och beläggning per grupp, med markering för grupper under minimiantalet
-- **Notiser:** skriv en notis med valfri informationssida, se förhandsvisning av hur den ser ut i mobilen, välj mottagare (alla eller en grupp), och se vilka notiser som skickats och hur många som läst dem
+- **Veckan:** alla pass i veckan med beläggning. Klicka på ett pass för att se deltagarlistan och kön. Där kan Emma:
+  - flytta passet, byta lokal eller ställa in det, med notis till de bokade
+  - registrera återbud, i tid eller sent, ångra och markera närvaro
+  - lägga till en person med tillgodo-pass, klipp eller drop-in
+- **Deltagare:** aktivera konton som skapats i appen, söka, lägga till och ändra deltagare och välja grupper
+- **Anmälan:** förslag på fördelning för nästa omgång. Nuvarande deltagare med förtur kommer först, sedan går ordningen efter exakt anmälningstid, och första- och andrahandsval används. Emma kan justera enskilda personer och sedan bekräfta alla. Då skapas grupper och betalningskrav, nya konton aktiveras och alla får en notis
+- **Betalningar:** obetalda och betalda betalningar. Emma markerar betalt, vilket ger ett kvittonummer, kan ångra, skapa nya betalningskrav och påminna alla som inte betalat. Ett 10-kort skapas när köpet är betalt
+- **Omgångar:** priser och beläggning, och ny omgång. Grupperna kopieras från en tidigare omgång och passen skapas automatiskt. Uppehållsveckor hoppas över, och anmälan och förtur kan schemaläggas
+- **Notiser:** till alla, en grupp eller alla som inte betalat, med valfri informationssida och förhandsvisning
+
+Samma API används av mobilappen (`/api/my-*`, `/api/bookable`, `/api/push-token`). Notiser levereras som pushnotis via Expo Push och annars som e-post via Resend. Varje dag kl 17 skickar `/api/cron-reminders` frågan "Kommer du imorgon?" och påminnelser om betalningar.
+
+Reglerna för pass finns i `api/_lib/bookings.ts` och fördelningen i `api/_lib/allocate.ts`. Se också [`../docs/driftsattning.md`](../docs/driftsattning.md).
 
 ## Inloggning och nya konton
 
@@ -27,7 +36,7 @@ Samma upplägg som padelappen: Vite och React i `src/`, API som Vercel-funktione
 ```bash
 npm install
 npm run dev:demo   # påhittad demodata i minnet (PGlite); logga in med starkmammavarberg@gmail.com, koden visas på skärmen
-npm test           # röktester av API:et mot demodatabasen
+npm test           # 30 tester av API:et och reglerna mot demodatabasen
 ```
 
 Mot riktiga databasen: sätt miljövariablerna nedan och kör `npm run dev`.

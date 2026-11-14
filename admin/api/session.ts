@@ -87,3 +87,4 @@ export async function PUT(request: Request) {
   }
   return json({ ok: true, notified });
 }
+export { OPTIONS } from './_lib/http.js';

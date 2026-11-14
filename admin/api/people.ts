@@ -84,3 +84,4 @@ export async function PUT(request: Request) {
     return conflict(e) ?? bad('Kunde inte spara', 500);
   }
 }
+export { OPTIONS } from './_lib/http.js';

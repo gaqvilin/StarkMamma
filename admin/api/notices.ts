@@ -61,3 +61,4 @@ export async function POST(request: Request) {
   );
   return json({ id: n.id, recipients: n.recipients }, 201);
 }
+export { OPTIONS } from './_lib/http.js';

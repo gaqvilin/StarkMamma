@@ -38,3 +38,4 @@ export async function POST(request: Request) {
     }
   });
 }
+export { OPTIONS } from './_lib/http.js';

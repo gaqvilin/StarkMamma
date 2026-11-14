@@ -1,109 +1,119 @@
-import React, { useMemo, useState } from 'react';
+// Emmas vyer i mobilappen, kopplade till samma API som admin på datorn.
+import React, { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import {
-  ME,
-  MIN_PER_GROUP,
-  NOW,
-  Occurrence,
-  Registration,
-  dateLabel,
-  groupById,
-  groups,
-  occurrences,
-  roster,
-  startOf,
-} from '../data';
-import { preFilled, useStore } from '../store';
+import { WD, api, dayLabel, shortDate } from '../api';
+import { useApi } from '../auth';
 import { colors } from '../theme';
+import { useToast } from '../toast';
 import { Bar, Button, Card, Chip, H1, H2, P, Pill, Row } from '../ui';
 
-// ------------------------------------------------------------------ Passlista
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const mondayOf = (d: Date) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return iso(x);
+};
+const addDays = (d: string, n: number) => {
+  const x = new Date(`${d}T12:00:00`);
+  x.setDate(x.getDate() + n);
+  return iso(x);
+};
+const isoWeek = (d: string) => {
+  const x = new Date(`${d}T12:00:00`);
+  x.setDate(x.getDate() + 3 - ((x.getDay() + 6) % 7));
+  const jan4 = new Date(x.getFullYear(), 0, 4);
+  return 1 + Math.round(((x.getTime() - jan4.getTime()) / 86400000 - 3 + ((jan4.getDay() + 6) % 7)) / 7);
+};
 
-type Status = 'kommer' | 'återbud' | 'inget svar';
-type Store = ReturnType<typeof useStore>;
-
-const DAY_MS = 24 * 3600 * 1000;
-const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-/** Svar på "kommer du?" efterfrågas dagen innan, så närvaro visas bara för pass idag och imorgon. */
-const asksAttendance = (o: Occurrence) => dayStart(o.date).getTime() - dayStart(NOW).getTime() <= DAY_MS;
-
-// Deterministisk låtsasstatus för deltagarna så att prototypen ser levande ut.
-function sessionPeople(s: Store, o: Occurrence) {
-  let h = 0;
-  for (const c of o.id) h = (h * 31 + c.charCodeAt(0)) % 1009;
-  const cap = s.capacity(o);
-  const booked = Math.min(cap, s.bookedCount(o));
-  const cancelIdx = h % 4 === 0 ? [5, 9] : h % 4 === 1 ? [5] : [];
-  const list: { name: string; status: Status }[] = [];
-  roster.slice(0, Math.min(roster.length, booked + (s.cancelled[o.id] ? 1 : 0))).forEach((name, i) => {
-    let status: Status = (i + h) % 5 === 3 ? 'inget svar' : 'kommer';
-    if (cancelIdx.includes(i)) status = 'återbud';
-    if (name === ME.name) {
-      if (!ME.groups.includes(o.groupId) && !s.extra[o.id]) return;
-      status = s.cancelled[o.id] ? 'återbud' : s.attending[o.id] ? 'kommer' : 'inget svar';
-    }
-    list.push({ name, status });
-  });
-  const free = cap - booked;
-  const queue = free > 0 ? 0 : 1 + (h % 2);
-  return {
-    people: list,
-    booked,
-    cap,
-    free,
-    queue,
-    coming: list.filter((p) => p.status === 'kommer').length,
-    noAnswer: list.filter((p) => p.status === 'inget svar').length,
-    cancelled: list.filter((p) => p.status === 'återbud').length,
-  };
+function Loading({ error }: { error?: string }) {
+  return <P muted style={{ marginTop: 20 }}>{error || 'Hämtar…'}</P>;
 }
 
-const WEEK_DATES: Record<number, string> = {
-  45: '2–8/11', 46: '9–15/11', 47: '16–22/11', 48: '23–29/11', 49: '30/11–6/12', 50: '7–13/12', 51: '14–20/12',
+// ------------------------------------------------------------------ Pass
+
+interface WeekSession {
+  id: string; date: string; time: string; place: string; capacity: number; status: string; note: string | null;
+  booked: number; attending: number; cancelled: number; queue: number;
+}
+interface Roster {
+  session: WeekSession;
+  roster: { id: string; name: string; phone: string | null; status: string; source: string }[];
+  queue: { id: string; name: string }[];
+}
+interface PendingPerson { id: string; name: string; email: string; phone: string | null; status: string }
+
+const ST: Record<string, [string, 'ok' | 'warn' | 'danger' | 'neutral']> = {
+  booked: ['bokad', 'neutral'],
+  attending: ['kommer', 'ok'],
+  attended: ['närvarade', 'ok'],
+  cancelled_in_time: ['återbud', 'danger'],
+  cancelled_late: ['sent återbud', 'danger'],
+  no_show: ['kom inte', 'warn'],
 };
 
 export function RosterScreen() {
-  const s = useStore();
-  const [week, setWeek] = useState(46);
+  const [from, setFrom] = useState(() => mondayOf(new Date()));
   const [open, setOpen] = useState<string | null>(null);
+  const week = useApi<{ sessions: WeekSession[] }>(`week?from=${from}`);
+  const people = useApi<{ people: PendingPerson[] }>('people');
+  const toast = useToast();
+  const pending = (people.data?.people ?? []).filter((p) => p.status === 'pending');
 
-  const weekOccs = occurrences.filter((o) => o.week === week);
-  const stats = new Map(weekOccs.map((o) => [o.id, sessionPeople(s, o)]));
-  const upcomingStats = weekOccs.filter((o) => startOf(o) > NOW).map((o) => stats.get(o.id)!);
-  const totalFree = upcomingStats.reduce((a, x) => a + Math.max(0, x.free), 0);
-  const totalCancelled = upcomingStats.reduce((a, x) => a + x.cancelled, 0);
-  const totalQueue = upcomingStats.reduce((a, x) => a + x.queue, 0);
-
-  const byDay = new Map<string, Occurrence[]>();
-  weekOccs.forEach((o) => {
-    const k = dayStart(o.date).toISOString();
-    byDay.set(k, [...(byDay.get(k) ?? []), o]);
-  });
-
-  const relDay = (d: Date) => {
-    const diff = Math.round((dayStart(d).getTime() - dayStart(NOW).getTime()) / DAY_MS);
-    return diff === 0 ? 'idag' : diff === 1 ? 'imorgon' : '';
-  };
+  const byDay = new Map<string, WeekSession[]>();
+  (week.data?.sessions ?? []).forEach((s) => byDay.set(s.date, [...(byDay.get(s.date) ?? []), s]));
+  const free = (week.data?.sessions ?? []).filter((s) => s.status !== 'cancelled').reduce((a, s) => a + Math.max(0, s.capacity - s.booked), 0);
+  const cancelled = (week.data?.sessions ?? []).reduce((a, s) => a + s.cancelled, 0);
+  const queue = (week.data?.sessions ?? []).reduce((a, s) => a + s.queue, 0);
 
   return (
     <View>
       <H1>Pass</H1>
 
+      {pending.length > 0 && (
+        <Card style={{ borderColor: colors.accent }}>
+          <H2>Nya konton att aktivera ({pending.length})</H2>
+          {pending.map((p) => (
+            <Row key={p.id} style={{ justifyContent: 'space-between', paddingVertical: 6 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '700' }}>{p.name || p.email}</Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>{p.phone ?? 'telefon saknas'}</Text>
+              </View>
+              <Button
+                small
+                title="Aktivera"
+                disabled={!p.name}
+                onPress={async () => {
+                  try {
+                    await api('people-activate', { method: 'POST', body: { id: p.id, action: 'activate' } });
+                    toast({ title: 'Aktiverat', body: `${p.name} har fått en notis.` });
+                    people.reload();
+                  } catch (e) {
+                    toast({ title: 'Det gick inte', body: (e as Error).message });
+                  }
+                }}
+              />
+            </Row>
+          ))}
+          <P muted style={{ fontSize: 13 }}>Grupper väljer du i admin på datorn eller när anmälan bekräftas.</P>
+        </Card>
+      )}
+
       <Row style={{ justifyContent: 'space-between', marginBottom: 12 }}>
-        <Button small variant="secondary" title="Föregående" disabled={week <= 45} onPress={() => { setWeek(week - 1); setOpen(null); }} />
+        <Button small variant="secondary" title="Föregående" onPress={() => { setFrom(addDays(from, -7)); setOpen(null); }} />
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontWeight: '800', fontSize: 16 }}>Vecka {week}</Text>
-          <Text style={{ color: colors.muted, fontSize: 13 }}>{WEEK_DATES[week]}</Text>
+          <Text style={{ fontWeight: '800', fontSize: 16 }}>Vecka {isoWeek(from)}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13 }}>
+            {shortDate(from)}–{shortDate(addDays(from, 6))}
+          </Text>
         </View>
-        <Button small variant="secondary" title="Nästa" disabled={week >= 51} onPress={() => { setWeek(week + 1); setOpen(null); }} />
+        <Button small variant="secondary" title="Nästa" onPress={() => { setFrom(addDays(from, 7)); setOpen(null); }} />
       </Row>
 
       <Row style={{ marginBottom: 16 }}>
         {[
-          { n: totalFree, label: 'lediga platser', color: colors.ok },
-          { n: totalCancelled, label: 'återbud', color: colors.danger },
-          { n: totalQueue, label: 'i kö', color: colors.accent },
+          { n: free, label: 'lediga platser', color: colors.ok },
+          { n: cancelled, label: 'återbud', color: colors.danger },
+          { n: queue, label: 'i kö', color: colors.accent },
         ].map((x) => (
           <Card key={x.label} style={{ flex: 1, marginBottom: 0, paddingVertical: 10, alignItems: 'center' }}>
             <Text style={{ fontSize: 22, fontWeight: '800', color: x.color }}>{x.n}</Text>
@@ -112,222 +122,206 @@ export function RosterScreen() {
         ))}
       </Row>
 
-      {[...byDay.entries()].map(([k, occs]) => {
-        const d = occs[0].date;
-        const rel = relDay(d);
-        return (
-          <View key={k} style={{ marginBottom: 14 }}>
-            <Row style={{ marginBottom: 6 }}>
-              <Text style={{ fontWeight: '800', fontSize: 13, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 }}>{dateLabel(d)}</Text>
-              {rel ? <Pill tone="accent" text={rel} /> : null}
-            </Row>
+      {!week.data ? (
+        <Loading error={week.error} />
+      ) : (
+        [...byDay.entries()].map(([date, sessions]) => (
+          <View key={date} style={{ marginBottom: 14 }}>
+            <Text style={{ fontWeight: '800', fontSize: 13, color: colors.muted, textTransform: 'uppercase', marginBottom: 6 }}>{dayLabel(date)}</Text>
             <Card style={{ padding: 0, overflow: 'hidden' }}>
-              {occs.map((o, idx) => {
-                const st = stats.get(o.id)!;
-                const past = startOf(o) <= NOW;
-                const isOpen = open === o.id;
-                return (
-                  <View key={o.id} style={{ borderTopWidth: idx ? 1 : 0, borderColor: colors.line }}>
-                    <Pressable onPress={() => setOpen(isOpen ? null : o.id)} style={{ padding: 14, opacity: past ? 0.45 : 1 }}>
-                      <Row style={{ justifyContent: 'space-between' }}>
-                        <Row>
-                          <Text style={{ fontWeight: '800', fontSize: 17, fontVariant: ['tabular-nums'] }}>{o.time}</Text>
-                          <Text style={{ color: colors.muted, fontSize: 14 }}>{o.place}</Text>
-                          {o.moved ? <Pill tone="warn" text="flyttat" /> : null}
-                        </Row>
-                        <Text style={{ fontWeight: '700', fontVariant: ['tabular-nums'] }}>{st.booked}/{st.cap}</Text>
+              {sessions.map((s, i) => (
+                <View key={s.id} style={{ borderTopWidth: i ? 1 : 0, borderColor: colors.line }}>
+                  <Pressable onPress={() => setOpen(open === s.id ? null : s.id)} style={{ padding: 14, opacity: s.status === 'cancelled' ? 0.5 : 1 }}>
+                    <Row style={{ justifyContent: 'space-between' }}>
+                      <Row>
+                        <Text style={{ fontWeight: '800', fontSize: 17 }}>{s.time}</Text>
+                        <Text style={{ color: colors.muted }}>{s.place}</Text>
+                        {s.status === 'moved' ? <Pill tone="warn" text="flyttat" /> : null}
+                        {s.status === 'cancelled' ? <Pill tone="danger" text="inställt" /> : null}
                       </Row>
-                      <Bar value={st.booked} max={st.cap} />
-                      <Row style={{ marginTop: 8, flexWrap: 'wrap' }}>
-                        {past ? (
-                          <Text style={{ color: colors.muted, fontSize: 13 }}>Genomfört</Text>
-                        ) : (
-                          <>
-                            {asksAttendance(o) ? (
-                              <Text style={{ fontSize: 13, color: colors.muted }}>
-                                <Text style={{ color: colors.ok, fontWeight: '700' }}>{st.coming} kommer</Text>
-                                {st.noAnswer ? <Text style={{ color: colors.warn, fontWeight: '700' }}>{`  ·  ${st.noAnswer} inget svar`}</Text> : null}
-                              </Text>
-                            ) : null}
-                            {st.cancelled ? <Pill tone="danger" text={`${st.cancelled} återbud`} /> : null}
-                            {st.free > 0 ? <Pill tone="ok" text={`${st.free} ledig${st.free > 1 ? 'a' : ''}`} /> : null}
-                            {st.queue ? <Pill tone="accent" text={`${st.queue} i kö`} /> : null}
-                          </>
-                        )}
-                      </Row>
-                    </Pressable>
-
-                    {isOpen && (
-                      <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-                        {!past && (
-                          <Row style={{ flexWrap: 'wrap', marginBottom: 10 }}>
-                            {asksAttendance(o) && st.noAnswer > 0 && (
-                              <Button small title={`Påminn ${st.noAnswer} som inte svarat`} onPress={() => s.dispatch({ type: 'push', title: `Kommer du ${dateLabel(o.date).toLowerCase()} ${o.time}?`, body: `Svara "Jag kommer" eller lämna återbud i appen. ${o.place === 'Gymmet' ? 'Rena inomhusskor.' : 'Klä dig varmt, vi kör i Ladan.'}` })} />
-                            )}
-                            {st.cancelled > 0 && (
-                              <Button small variant="secondary" title="Erbjud platsen till kön" onPress={() => s.dispatch({ type: 'push', title: `Ledig plats ${dateLabel(o.date).toLowerCase()} ${o.time}`, body: `Det finns en ledig plats på ${o.place} ${o.time}. Den som först trycker "Boka" får platsen.` })} />
-                            )}
-                          </Row>
-                        )}
-                        {st.people.map((p) => (
-                          <Row key={p.name} style={{ justifyContent: 'space-between', paddingVertical: 7 }}>
-                            <Text style={{ fontSize: 15, fontWeight: p.name === ME.name ? '800' : '500' }}>{p.name}</Text>
-                            {asksAttendance(o) || p.status === 'återbud' ? (
-                              <Pill tone={p.status === 'kommer' ? 'ok' : p.status === 'återbud' ? 'danger' : 'warn'} text={p.status} />
-                            ) : null}
-                          </Row>
-                        ))}
-                        {st.queue ? <P muted style={{ marginTop: 6 }}>Kö: {['Petra Hed', 'Linnea Ros'].slice(0, st.queue).join(', ')}</P> : null}
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
+                      <Text style={{ fontWeight: '700' }}>
+                        {s.booked}/{s.capacity}
+                      </Text>
+                    </Row>
+                    <Bar value={s.booked} max={s.capacity} />
+                    <Row style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                      {s.attending ? <Text style={{ color: colors.ok, fontWeight: '700', fontSize: 13 }}>{s.attending} kommer</Text> : null}
+                      {s.cancelled ? <Pill tone="danger" text={`${s.cancelled} återbud`} /> : null}
+                      {s.capacity - s.booked > 0 ? <Pill tone="ok" text={`${s.capacity - s.booked} lediga`} /> : null}
+                      {s.queue ? <Pill tone="accent" text={`${s.queue} i kö`} /> : null}
+                    </Row>
+                  </Pressable>
+                  {open === s.id && <SessionDetail id={s.id} onChanged={week.reload} />}
+                </View>
+              ))}
             </Card>
           </View>
+        ))
+      )}
+    </View>
+  );
+}
+
+function SessionDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
+  const { data, reload } = useApi<Roster>(`session?id=${id}`);
+  const toast = useToast();
+  if (!data) return <Loading />;
+  const s = data.session;
+
+  const booking = async (personId: string, action: string) => {
+    try {
+      await api('booking', { method: 'POST', body: { sessionId: id, personId, action } });
+      reload();
+      onChanged();
+    } catch (e) {
+      toast({ title: 'Det gick inte', body: (e as Error).message });
+    }
+  };
+  const update = async (body: Record<string, unknown>, done: string) => {
+    try {
+      const r = await api<{ notified: number }>('session', { method: 'PUT', body: { id, notify: true, ...body } });
+      toast({ title: done, body: `${r.notified} har fått en notis.` });
+      reload();
+      onChanged();
+    } catch (e) {
+      toast({ title: 'Det gick inte', body: (e as Error).message });
+    }
+  };
+
+  return (
+    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+      <Row style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+        {s.status !== 'cancelled' && (
+          <>
+            <Button small variant="secondary" title={`Byt till ${s.place === 'Gymmet' ? 'Ladan' : 'Gymmet'}`} onPress={() => update({ place: s.place === 'Gymmet' ? 'Ladan' : 'Gymmet' }, 'Lokalen är ändrad')} />
+            <Button small variant="danger" title="Ställ in" onPress={() => update({ cancelled: true }, 'Passet är inställt')} />
+          </>
+        )}
+        {s.status === 'cancelled' && <Button small variant="secondary" title="Kör passet ändå" onPress={() => update({ cancelled: false }, 'Passet körs')} />}
+      </Row>
+      {data.roster.map((r) => {
+        const [label, tone] = ST[r.status] ?? [r.status, 'neutral'];
+        const cancelled = r.status.startsWith('cancelled');
+        return (
+          <Row key={r.id} style={{ justifyContent: 'space-between', paddingVertical: 6 }}>
+            <Text style={{ flex: 1, fontSize: 15, color: cancelled ? colors.muted : colors.ink }}>
+              {r.name}
+              {r.source !== 'ordinary' ? ' (extra)' : ''}
+            </Text>
+            <Pill tone={tone} text={label} />
+            <Button small variant="ghost" title={cancelled ? 'Ångra' : 'Återbud'} onPress={() => booking(r.id, cancelled ? 'restore' : 'cancel_in_time')} />
+          </Row>
         );
       })}
+      {data.queue.length > 0 && <P muted style={{ marginTop: 6 }}>Kö: {data.queue.map((q) => q.name).join(', ')}</P>}
     </View>
   );
 }
 
 // ------------------------------------------------------------------ Anmälningar
 
-type Plan = Record<string, { groups: (string | null)[]; status: 'bekräftad' | 'väntelista' }>;
-
-function suggest(regs: Registration[]): { plan: Plan; fill: Record<string, number> } {
-  const fill: Record<string, number> = { ...preFilled };
-  const plan: Plan = {};
-  // Förtur för nuvarande deltagare, sedan exakt anmälningstid
-  const order = [...regs].sort((a, b) => Number(b.existing) - Number(a.existing) || a.at.getTime() - b.at.getTime());
-  for (const r of order) {
-    const assigned = r.choices.map(([first, second]) => {
-      for (const gid of [first, second]) {
-        if (gid && fill[gid] < groupById(gid).capacity) {
-          fill[gid] += 1;
-          return gid;
-        }
-      }
-      return null;
-    });
-    plan[r.id] = { groups: assigned, status: assigned.every(Boolean) ? 'bekräftad' : 'väntelista' };
-  }
-  return { plan, fill };
+interface RoundItem { id: string; name: string; registration_opens_at: string | null; registrations: number }
+interface RegData {
+  groups: { id: string; weekday: number; time: string; place: string; capacity: number; min_participants: number }[];
+  registrations: { id: string; name: string; per_week: number; status: string; priority: boolean; existing: boolean; created_at: string }[];
+  suggestion: Record<string, { groupIds: (string | null)[] }>;
+  fill: Record<string, number>;
 }
 
-const short = (gid: string) => {
-  const g = groupById(gid);
-  return `${['', 'Mån', 'Tis', 'Ons', 'Tors', 'Fre'][g.weekday]} ${g.time}`;
-};
-
 export function RegistrationsScreen() {
-  const s = useStore();
-  const { plan, fill } = useMemo(() => suggest(s.registrations), [s.registrations]);
-  const pending = s.registrations.filter((r) => r.status === 'väntar');
+  const rounds = useApi<{ rounds: RoundItem[] }>('rounds');
+  const round = rounds.data?.rounds.find((r) => r.registration_opens_at);
+  const regs = useApi<RegData>(round ? `registrations?roundId=${round.id}` : null);
+  const toast = useToast();
+  if (!rounds.data) return <Loading error={rounds.error} />;
+  if (!round) return <View><H1>Anmälningar</H1><Card><P>Ingen omgång har anmälan öppen. Skapa nästa omgång i admin på datorn.</P></Card></View>;
+  if (!regs.data) return <Loading error={regs.error} />;
+  const { groups, registrations, suggestion, fill } = regs.data;
+  const pending = registrations.filter((r) => r.status === 'pending');
+  const byId = new Map(groups.map((g) => [g.id, g]));
 
   return (
     <View>
       <H1>Anmälningar</H1>
-      <P muted style={{ marginBottom: 12 }}>CT-omgång v 2–8 2027 · förtur till 10/11 20.00 · {s.registrations.length} nya anmälningar</P>
-
+      <P muted style={{ marginBottom: 12 }}>{round.name} · {registrations.length} anmälda</P>
       <Card>
-        <H2>Beläggning per grupp</H2>
+        <H2>Platser med förslaget</H2>
         {groups.map((g) => (
           <View key={g.id} style={{ marginBottom: 10 }}>
             <Row style={{ justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: '600' }}>{short(g.id)} · {g.place}</Text>
-              <Text style={{ color: fill[g.id] < MIN_PER_GROUP ? colors.warn : colors.muted, fontWeight: '700' }}>
-                {fill[g.id]}/{g.capacity}{fill[g.id] < MIN_PER_GROUP ? ` · under ${MIN_PER_GROUP}` : ''}
+              <Text style={{ fontWeight: '600' }}>{WD[g.weekday]} {g.time} · {g.place}</Text>
+              <Text style={{ fontWeight: '700', color: fill[g.id] < g.min_participants ? colors.warn : colors.muted }}>
+                {fill[g.id]}/{g.capacity}
               </Text>
             </Row>
-            <Bar value={fill[g.id]} max={g.capacity} min={MIN_PER_GROUP} />
+            <Bar value={fill[g.id]} max={g.capacity} min={g.min_participants} />
           </View>
         ))}
       </Card>
-
-      <H2>Förslag på fördelning</H2>
-      {s.registrations.map((r) => {
-        const p = plan[r.id];
-        return (
-          <Card key={r.id} style={{ paddingVertical: 12 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Text style={{ fontWeight: '700', fontSize: 15 }}>{r.name}</Text>
-              {r.status !== 'väntar' ? (
-                <Pill tone={r.status === 'bekräftad' ? 'ok' : 'warn'} text={r.status} />
-              ) : (
-                <Pill tone={p.status === 'bekräftad' ? 'accent' : 'warn'} text={p.status === 'bekräftad' ? 'förslag: plats' : 'förslag: väntelista'} />
-              )}
-            </Row>
-            <Row style={{ flexWrap: 'wrap', marginTop: 6 }}>
-              {r.existing ? <Pill text="förtur" /> : <Pill tone="accent" text="ny" />}
-              <Pill text={`${r.perWeek}/v`} />
-              {r.installments && <Pill text="delbetalning" />}
-              {r.friend && <Pill text={`med ${r.friend}`} />}
-              <Pill text={`${r.at.getHours()}.${String(r.at.getMinutes()).padStart(2, '0')}.${String(r.at.getSeconds()).padStart(2, '0')}`} />
-            </Row>
-            {r.choices.map(([a, b], i) => (
-              <P key={i} muted style={{ marginTop: 4 }}>
-                Pass {i + 1}: önskar {short(a)}{b ? ` (alt. ${short(b)})` : ''} →{' '}
-                <Text style={{ color: p.groups[i] ? (p.groups[i] === a ? colors.ok : colors.warn) : colors.danger, fontWeight: '700' }}>
-                  {p.groups[i] ? short(p.groups[i]!) : 'fullt'}
-                </Text>
-              </P>
-            ))}
-          </Card>
-        );
-      })}
+      <H2>Att bekräfta ({pending.length})</H2>
+      {pending.slice(0, 50).map((r) => (
+        <Card key={r.id} style={{ paddingVertical: 10 }}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Text style={{ fontWeight: '700' }}>{r.name}</Text>
+            {r.priority ? <Pill tone="accent" text="förtur" /> : r.existing ? <Pill text="tränar nu" /> : <Pill tone="ok" text="ny" />}
+          </Row>
+          <P muted style={{ fontSize: 13 }}>
+            {r.created_at} → {(suggestion[r.id]?.groupIds ?? []).map((id) => (id ? `${WD[byId.get(id)!.weekday]} ${byId.get(id)!.time}` : 'väntelista')).join(', ')}
+          </P>
+        </Card>
+      ))}
       <Button
-        title={pending.length ? `Bekräfta ${pending.length} & skicka push` : 'Alla är bekräftade'}
+        title={pending.length ? `Bekräfta ${pending.length} enligt förslaget` : 'Alla är klara'}
         disabled={!pending.length}
-        onPress={() => s.dispatch({ type: 'confirmRegistrations', decisions: Object.fromEntries(pending.map((r) => [r.id, plan[r.id].status])) })}
-        style={{ marginBottom: 20 }}
+        onPress={async () => {
+          const decisions = pending.map((r) => {
+            const ids = (suggestion[r.id]?.groupIds ?? []).filter(Boolean) as string[];
+            return { id: r.id, groupIds: ids.length ? ids : null };
+          });
+          const res = await api<{ confirmed: number; waitlisted: number }>('registrations-confirm', { method: 'POST', body: { decisions } });
+          toast({ title: 'Klart', body: `${res.confirmed} bekräftade, ${res.waitlisted} på väntelistan. Alla har fått besked.` });
+          regs.reload();
+        }}
+        style={{ marginBottom: 8 }}
       />
+      <P muted style={{ marginBottom: 20 }}>Vill du ändra enskilda platser gör du det i admin på datorn.</P>
     </View>
   );
 }
 
-// ------------------------------------------------------------------ Push
+// ------------------------------------------------------------------ Skicka notis
 
 type Template = { label: string; title: string; body: string; page?: { heading: string; text: string; link?: string } };
-
 const TEMPLATES: Template[] = [
-  { label: 'Ändrad lokal', title: 'Ändrad lokal ikväll', body: 'Torsdag 17.30 kör vi i Gymmet i stället för Ladan pga vädret. Rena inomhusskor!' },
-  { label: 'Extrapass', title: 'SöndagsFYS igen?', body: 'Extrapass sön 15/11 kl 17.00 om minst 8 anmäler sig. 140 kr eller ett klipp. Tryck för att anmäla intresse!' },
-  { label: 'Uppsamling', title: 'Lediga platser kommande vecka', body: 'Det finns lediga platser mån 12.00, tis 06.15 och fre 06.15. Boka med ditt tillgodo-pass i appen!' },
-  { label: 'Anmälan öppen', title: 'Anmälan öppen – CT v 2–8 2027', body: 'Förtur för dig som tränar nu fram till tis 10/11 kl 20.00. Anmäl dig i appen!' },
+  { label: 'Ändrad lokal', title: 'Ändrad lokal ikväll', body: 'Vi kör i Gymmet i stället för Ladan pga vädret. Rena inomhusskor!' },
+  { label: 'Extrapass', title: 'SöndagsFYS igen?', body: 'Extrapass på söndag kl 17.00 om tillräckligt många anmäler sig. 140 kr eller ett klipp.' },
+  { label: 'Lediga platser', title: 'Lediga platser kommande vecka', body: 'Det finns lediga platser kommande vecka. Boka med ditt tillgodo-pass i appen!' },
+  { label: 'Anmälan öppen', title: 'Anmälan öppen till nästa omgång', body: 'Du som tränar nu har förtur. Anmäl dig i appen under Anmälan.' },
   {
     label: 'Gruppbeställning',
     title: 'Ny chans att beställa från ICIW',
     body: '30 % rabatt för StarkMamma. Tryck för att läsa hur du beställer.',
     page: {
       heading: 'Gruppbeställning från ICIW',
-      text: 'Höstens färger och material är här, spana till exempel in de superfina fleecen.\n\nSå här beställer du: titta på hemsidan och skicka mig det du vill ha. Jag löser så att kläderna levereras hit, och du hämtar och betalar direkt till StarkMamma.\n\nDu får 30 % rabatt på ordinarie pris och 10 % på rea och outlet.\n\nBeställ senast söndag 1/11 kl 12.00. Hojta om du har frågor!',
+      text: 'Titta på hemsidan och skicka mig det du vill ha. Jag ser till att kläderna levereras hit, och du hämtar och betalar direkt till StarkMamma.\n\nDu får 30 % rabatt på ordinarie pris och 10 % på rea och outlet.',
       link: 'https://www.icaniwill.se',
-    },
-  },
-  {
-    label: 'Höstbingo',
-    title: 'HÖST-bingo under uppehållet',
-    body: 'Vinn träningskort och en egen stund med mig. Tryck för att se brickan.',
-    page: {
-      heading: 'StarkMammas HÖST-bingo',
-      text: 'Gäller 17/10 till 1/11, under uppehållet v 43–44.\n\nGör alla aktiviteter på brickan och skriv datum i rutan när du kryssar. Bara ett kryss per aktivitet.\n\nFota din fulla bricka och skicka in den senast 1/11 kl 20.00 för att vara med i utlottningen. Bland vinsterna finns två 5-gångerskort på crosstrainingen och ett presentkort på en egen stund med mig, till exempel för att prata kost eller träningsupplägg.\n\nUtskrivna brickor finns i väntrummet.',
     },
   },
 ];
 
 export function PushScreen() {
-  const s = useStore();
+  const round = useApi<{ groups: { id: string; weekday: number; time: string; place: string; members: number }[] }>('round');
+  const toast = useToast();
+  const [audience, setAudience] = useState('all');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [withPage, setWithPage] = useState(false);
   const [heading, setHeading] = useState('');
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
-  const [aud, setAud] = useState('Alla deltagare');
-  const audiences = ['Alla deltagare', 'Tis 18.45', 'Ej betalt', 'Kö-listor', 'Intresseanmälda'];
+  const input = { borderWidth: 1, borderColor: colors.line, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10, backgroundColor: colors.card } as const;
 
-  const useTemplate = (t: Template) => {
+  const use = (t: Template) => {
     setTitle(t.title);
     setBody(t.body);
     setWithPage(!!t.page);
@@ -335,57 +329,57 @@ export function PushScreen() {
     setText(t.page?.text ?? '');
     setLink(t.page?.link ?? '');
   };
-  const reset = () => useTemplate({ label: '', title: '', body: '' });
-  const ready = title && body && (!withPage || (heading && text));
-  const input = { borderWidth: 1, borderColor: colors.line, borderRadius: 10, padding: 12, fontSize: 15, marginBottom: 10 } as const;
 
   return (
     <View>
       <H1>Skicka notis</H1>
-      <P muted style={{ marginBottom: 12 }}>Når alla direkt på mobilen, även de som inte är på Facebook. E-post används som reserv.</P>
-
+      <P muted style={{ marginBottom: 12 }}>Når deltagarna direkt i mobilen. Den som inte har appen får ett mejl.</P>
       <H2>Mottagare</H2>
       <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>
-        {audiences.map((a) => (
-          <Chip key={a} label={a} active={aud === a} onPress={() => setAud(a)} />
+        <Chip label="Alla" active={audience === 'all'} onPress={() => setAudience('all')} />
+        <Chip label="Ej betalt" active={audience === 'unpaid'} onPress={() => setAudience('unpaid')} />
+        {(round.data?.groups ?? []).map((g) => (
+          <Chip key={g.id} label={`${WD[g.weekday]} ${g.time}`} active={audience === `group:${g.id}`} onPress={() => setAudience(`group:${g.id}`)} />
         ))}
       </Row>
-
       <H2>Mallar</H2>
       <Row style={{ flexWrap: 'wrap', marginBottom: 14 }}>
         {TEMPLATES.map((t) => (
-          <Chip key={t.label} label={t.label} active={title === t.title} onPress={() => useTemplate(t)} />
+          <Chip key={t.label} label={t.label} active={title === t.title} onPress={() => use(t)} />
         ))}
       </Row>
-
-      <Card>
-        <TextInput placeholder="Rubrik" value={title} onChangeText={setTitle} style={{ fontSize: 17, fontWeight: '700', paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.line }} />
-        <TextInput placeholder="Meddelande (syns i notisen)" value={body} onChangeText={setBody} multiline style={{ fontSize: 15, minHeight: 70, paddingTop: 10, textAlignVertical: 'top' }} />
-      </Card>
-
+      <TextInput placeholder="Rubrik" placeholderTextColor={colors.muted} value={title} onChangeText={setTitle} style={[input, { fontWeight: '700' }]} />
+      <TextInput placeholder="Meddelande" placeholderTextColor={colors.muted} value={body} onChangeText={setBody} multiline style={[input, { minHeight: 70, textAlignVertical: 'top' }]} />
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
             <H2>Informationssida</H2>
-            <P muted>När man trycker på notisen öppnas en sida med mer information. Bra för sådant som inte har en egen plats i appen.</P>
+            <P muted>Öppnas när man trycker på notisen.</P>
           </View>
           <Chip label={withPage ? 'På' : 'Av'} active={withPage} onPress={() => setWithPage(!withPage)} />
         </Row>
         {withPage && (
           <View style={{ marginTop: 12 }}>
-            <TextInput placeholder="Sidans rubrik" value={heading} onChangeText={setHeading} style={[input, { fontWeight: '700' }]} />
-            <TextInput placeholder="Text" value={text} onChangeText={setText} multiline style={[input, { minHeight: 140, textAlignVertical: 'top' }]} />
-            <TextInput placeholder="Länk (valfritt), t.ex. https://..." value={link} onChangeText={setLink} autoCapitalize="none" style={input} />
+            <TextInput placeholder="Sidans rubrik" placeholderTextColor={colors.muted} value={heading} onChangeText={setHeading} style={[input, { fontWeight: '700' }]} />
+            <TextInput placeholder="Text" placeholderTextColor={colors.muted} value={text} onChangeText={setText} multiline style={[input, { minHeight: 120, textAlignVertical: 'top' }]} />
+            <TextInput placeholder="Länk (valfri), https://…" placeholderTextColor={colors.muted} value={link} onChangeText={setLink} autoCapitalize="none" style={input} />
           </View>
         )}
       </Card>
-
       <Button
-        title={`Skicka till ${aud.toLowerCase()}`}
-        disabled={!ready}
-        onPress={() => {
-          s.dispatch({ type: 'push', title, body, page: withPage ? { heading, text, link: link || undefined } : undefined });
-          reset();
+        title="Skicka"
+        disabled={!title || !body || (withPage && (!heading || !text))}
+        onPress={async () => {
+          try {
+            const r = await api<{ recipients: number }>('notices', {
+              method: 'POST',
+              body: { audience, title, body, page: withPage ? { heading, text, link } : undefined },
+            });
+            toast({ title: 'Notisen är skickad', body: `Till ${r.recipients} personer.` });
+            use({ label: '', title: '', body: '' });
+          } catch (e) {
+            toast({ title: 'Det gick inte', body: (e as Error).message });
+          }
         }}
         style={{ marginBottom: 20 }}
       />
@@ -395,43 +389,54 @@ export function PushScreen() {
 
 // ------------------------------------------------------------------ Betalningar
 
+interface AdminCharge { id: string; name: string; description: string; amount: number; due_on: string | null; status: string }
+
 export function TrainerPayScreen() {
-  const s = useStore();
-  const unpaid = s.payments.filter((p) => !p.paid);
-  const total = s.payments.filter((p) => p.paid).reduce((a, p) => a + p.amount, 0);
-  const outstanding = unpaid.reduce((a, p) => a + p.amount, 0);
+  const { data, error, reload } = useApi<{ charges: AdminCharge[] }>('charges?status=unpaid');
+  const toast = useToast();
+  if (!data) return <Loading error={error} />;
+  const total = data.charges.reduce((a, c) => a + c.amount, 0);
   return (
     <View>
       <H1>Betalningar</H1>
-      <Row style={{ marginBottom: 14 }}>
-        <Card style={{ flex: 1, marginBottom: 0 }}>
-          <P muted>Inbetalt</P>
-          <H2 style={{ fontSize: 22, color: colors.ok }}>{total.toLocaleString('sv-SE')} kr</H2>
-        </Card>
-        <Card style={{ flex: 1, marginBottom: 0 }}>
-          <P muted>Utestående</P>
-          <H2 style={{ fontSize: 22, color: colors.warn }}>{outstanding.toLocaleString('sv-SE')} kr</H2>
-        </Card>
-      </Row>
+      <Card>
+        <P muted>Utestående</P>
+        <H2 style={{ fontSize: 24, color: colors.warn }}>{total.toLocaleString('sv-SE')} kr</H2>
+        <P muted>{data.charges.length} obetalda</P>
+      </Card>
       <Button
         variant="secondary"
-        title={`Påminn ${unpaid.length} som inte betalat`}
-        disabled={!unpaid.length}
-        onPress={() => s.dispatch({ type: 'push', title: 'Påminnelse om betalning', body: 'Du har en obetald avgift hos StarkMamma. Tryck för att betala direkt med Swish.' })}
+        title="Påminn alla som inte betalat"
+        disabled={!data.charges.length}
+        onPress={async () => {
+          const r = await api<{ recipients: number }>('notices', {
+            method: 'POST',
+            body: { audience: 'unpaid', title: 'Påminnelse om betalning', body: 'Du har en obetald avgift hos StarkMamma. Betala enkelt med Swish under Betala i appen.' },
+          });
+          toast({ title: 'Påminnelse skickad', body: `Till ${r.recipients} personer.` });
+        }}
         style={{ marginBottom: 14 }}
       />
-      {s.payments.map((p) => (
-        <Card key={p.id} style={{ paddingVertical: 12 }}>
+      {data.charges.map((c) => (
+        <Card key={c.id} style={{ paddingVertical: 12 }}>
           <Row style={{ justifyContent: 'space-between' }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700' }}>{p.name}</Text>
-              <P muted>{p.what} · {p.amount} kr · {p.due}</P>
+              <Text style={{ fontWeight: '700' }}>{c.name}</Text>
+              <P muted style={{ fontSize: 13 }}>
+                {c.description} · {c.amount} kr{c.due_on ? ` · ${shortDate(c.due_on)}` : ''}
+              </P>
             </View>
-            <Chip label={p.paid ? 'Betald' : 'Markera betald'} active={p.paid} onPress={() => s.dispatch({ type: 'togglePaid', id: p.id })} />
+            <Button
+              small
+              title="Betald"
+              onPress={async () => {
+                await api('charges-pay', { method: 'POST', body: { id: c.id, method: 'swish' } });
+                reload();
+              }}
+            />
           </Row>
         </Card>
       ))}
-      <P muted style={{ marginBottom: 20 }}>Senare: automatisk avstämning med Swish Handel, och kvitton skickas automatiskt.</P>
     </View>
   );
 }

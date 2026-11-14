@@ -1,28 +1,37 @@
-# StarkMamma-appen (prototyp)
+# StarkMamma-appen
 
-Byggs först som **webbapp (PWA)** och sedan som **native-app** från samma Expo-kod. Se `docs/app-plan.md`.
+Deltagarnas app för iPhone och Android, byggd med Expo (React Native) och TypeScript. Den är kopplad till samma API som Emmas admin (`../admin/api`).
 
-En klickbar prototyp byggd med Expo (React Native) och TypeScript. Den använder bara påhittad testdata och har ingen backend än.
+## Vad finns
 
-- **Deltagarläge:** nästa pass med "Jag kommer" och "Kommer inte", återbud som ger tillgodo om det lämnas senast dagen innan, bokning med tillgodo-pass, klippkort eller drop-in, kö, anmälan till ny omgång med första- och andrahandsval och kompis, betalningar med Swish-knapp, samt notiser
-- **Tränarläge:** passlista med närvaro, förslag på fördelning av anmälningar med förtur och minimiantal, en vy för att skicka pushnotiser med mallar, samt betalningsöversikt
-- Det finns bara en tränare, Emma. I den riktiga appen avgör inloggningen vilken vy man ser. I prototypen öppnas Emmas vy genom att lägga till `#emma` i adressen. En notis som Emma skickar visas som en pushbanner i deltagarens vy och hamnar i deltagarens inkorg
-- Prototypen låtsas att klockan är söndag 8/11 2026 kl 12.00 (`NOW` i `src/data.ts`)
+- **Inloggning:** e-post och kod, eller Google eller Facebook (på mobilen). Nya konton fyller i namn och mobilnummer och väntar sedan på att Emma aktiverar dem
+- **Deltagare:**
+  - Hem: nästa pass med "Jag kommer" och "Kommer inte", mina pass, återbud och ångra, samt tillgodo-pass
+  - Boka: pass de närmaste två veckorna, med tillgodo-pass, klipp eller drop-in, och kö när passet är fullt
+  - Anmälan: nästa omgång med förtur, första- och andrahandsval, kompis och delbetalning
+  - Betala: Swish-knapp, kvitton och klippkort
+  - Notiser: klockan uppe till höger, med informationssidor
+- **Emma** (rollen `trainer`) får admin i appen:
+  - Pass: veckan, aktivera nya konton, byt lokal, ställ in och registrera återbud
+  - Anmälningar: bekräfta enligt förslaget
+  - Skicka: notiser med informationssida
+  - Betalningar: markera betald och påminn
+- **Pushnotiser:** mobilen registrerar sig (`src/push.ts`) och skickar sin push-adress till servern (`/api/push-token`). Ett tryck på en notis öppnar den, eller dess informationssida
 
-## Kör
+## Kör lokalt mot demodatabasen
 
 ```bash
-npm install
-npx expo start        # skanna QR-koden med Expo Go på mobilen
-npx expo start --web  # i webbläsaren
+cd ../admin && npm run dev:demo
 ```
 
-## Bygga webbappen
+Kör sedan detta i den här katalogen, i ett annat fönster:
 
 ```bash
-npx expo export --platform web   # statiska filer i dist/, kan läggas ut på t.ex. Vercel
+EXPO_PUBLIC_API_URL=http://localhost:5173 npx expo start --web
 ```
 
-- Filerna för installationen ligger i `public/`: `manifest.json`, ikoner, `sw.js` för Web Push och `index.html`
-- Web Push-prenumerationen hanteras i `src/webpush.ts` och kräver `EXPO_PUBLIC_VAPID_PUBLIC_KEY`
-- Native-push finns i `src/push.ts` och kräver ett EAS-projekt och ett utvecklingsbygge
+Logga in med en e-postadress från demodatan, till exempel `anna.berg@example.com`, eller med `starkmammavarberg@gmail.com` för Emma. Koden visas på skärmen i testläget.
+
+## Bygga för mobilen (EAS)
+
+Steg för steg finns i [`../docs/driftsattning.md`](../docs/driftsattning.md). I korthet: `npx eas-cli@latest init`, ersätt `EXPO_PUBLIC_API_URL` i `eas.json` med admin-adressen, och kör sedan `npx eas-cli@latest build --profile preview`.

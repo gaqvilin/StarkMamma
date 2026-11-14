@@ -5,3 +5,4 @@ import { json } from './_lib/http.js';
 export async function POST() {
   return json({ admin: false }, 200, { 'set-cookie': clearCookie() });
 }
+export { OPTIONS } from './_lib/http.js';

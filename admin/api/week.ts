@@ -30,3 +30,4 @@ export async function GET(request: Request) {
   );
   return json({ from, sessions });
 }
+export { OPTIONS } from './_lib/http.js';
