@@ -17,6 +17,7 @@ Koden är klar och databasen hos Neon är uppdaterad med alla tabeller. Det som 
 | `CRON_SECRET` | En slumpad sträng. Vercel skickar den till den dagliga påminnelsen kl 17 | Ja |
 | `SWISH_NUMBER` | StarkMammas Swish-nummer. Knappen Betala i appen öppnar Swish med det numret, beloppet och ett meddelande ifyllda | Ja |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web). Ange `PUBLIC_URL/api/oauth-callback` som omdirigeringsadress | Nej, Google-knappen visas bara om de finns |
+| `BUNNY_LIBRARY_ID`, `BUNNY_API_KEY`, `BUNNY_TOKEN_KEY` | Bunny Stream, för uppladdade filmer. Se [film-och-betalning.md](film-och-betalning.md) | Nej, filmlänkar till YouTube och Vimeo fungerar ändå |
 | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` | developers.facebook.com → Skapa app → Facebook Login. Samma omdirigeringsadress. Appen kräver en länk till en integritetspolicy innan den kan aktiveras | Nej |
 
 3. Driftsätt projektet och öppna adressen. Logga in med `starkmammavarberg@gmail.com`, och koden kommer via e-post.
@@ -51,4 +52,4 @@ Admin finns då på http://localhost:5173. Logga in med `starkmammavarberg@gmail
 cd admin && npm test
 ```
 
-Det kör 44 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar, bekräftelser, onlineträning, bingo och inloggning.
+Det kör 71 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar, bekräftelser, onlineträning, bingo, film och inloggning, samt attacktester: förfalskad inloggning, åtkomst till andras data, ogiltig indata, samtidiga bokningar och dubbelklick, fusk med tillgodo och klipp, och sommartid.
