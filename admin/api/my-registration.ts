@@ -22,7 +22,7 @@ async function openRound(q: Query, personId: string, t: string) {
        exists (select 1 from group_members gm join groups g on g.id = gm.group_id
                where gm.person_id = $1 and g.round_id = r.previous_round_id) as existing
      from rounds r
-     where r.registration_opens_at is not null and r.status <> 'closed' and r.starts_on > ($2::timestamptz)::date
+     where r.registration_opens_at is not null and r.status <> 'closed' and r.starts_on > ($2::timestamptz at time zone 'Europe/Stockholm')::date
      order by r.starts_on limit 1`,
     [personId, t],
   );

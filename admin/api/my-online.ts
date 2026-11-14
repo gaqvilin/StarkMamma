@@ -4,14 +4,14 @@
 import { requireUser } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
-import { now } from './_lib/time.js';
+import { todayStockholm } from './_lib/time.js';
 export { OPTIONS } from './_lib/http.js';
 
 export async function GET(request: Request) {
   const user = await requireUser(request, { active: true });
   if (user instanceof Response) return user;
   const q = await db();
-  const today = now().toISOString().slice(0, 10);
+  const today = todayStockholm();
   const mine = await q<{ id: string }>(
     `select p.id, p.name, p.description, to_char(p.starts_on, 'YYYY-MM-DD') as starts_on, to_char(p.ends_on, 'YYYY-MM-DD') as ends_on
      from online_access a join online_programs p on p.id = a.program_id where a.person_id = $1 order by p.created_at desc`,

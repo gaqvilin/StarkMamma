@@ -121,7 +121,7 @@ export function LoginScreen() {
             disabled={code.length !== 6 || busy}
             onPress={() =>
               run(async () => {
-                const r = await api<{ token: string }>('auth-verify', { method: 'POST', body: { email: email.trim(), code } });
+                const r = await api<{ token: string }>('auth-verify', { method: 'POST', body: { email: email.trim(), code, client: 'app' } });
                 await signIn(r.token);
               })
             }

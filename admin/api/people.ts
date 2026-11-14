@@ -46,7 +46,7 @@ async function setGroups(q: Query, personId: string, groupIds: string[]) {
 }
 
 const conflict = (e: unknown) =>
-  /duplicate key|unique/i.test(String((e as Error).message)) ? bad('Telefonnummer eller e-post används redan', 409) : null;
+  /duplicate key|unique/i.test(String((e as Error).message)) ? bad('E-postadressen används redan', 409) : null;
 
 export async function POST(request: Request) {
   const denied = await requireTrainer(request);

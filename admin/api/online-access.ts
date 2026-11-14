@@ -14,6 +14,8 @@ export async function POST(request: Request) {
     await q(`insert into online_access (program_id, person_id, source) values ($1, $2, 'manual') on conflict do nothing`, [b.programId, b.personId]);
   } else if (b.action === 'revoke') {
     await q(`delete from online_access where program_id = $1 and person_id = $2`, [b.programId, b.personId]);
+    // Obetald beställning stryks, så att "Jag har swishat" inte kan ge tillgången tillbaka.
+    await q(`update charges set status = 'cancelled' where online_program_id = $1 and person_id = $2 and status = 'unpaid'`, [b.programId, b.personId]);
   } else return bad('Okänd åtgärd');
   return json({ ok: true });
 }

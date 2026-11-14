@@ -37,8 +37,14 @@ export const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
 export const hashCode = (email: string, code: string) =>
   createHash('sha256').update(`${secret()}:${email}:${code}`).digest('hex');
 
-export function issueToken(personId: string): string {
-  const payload = `${personId}.${Math.floor(Date.now() / 1000) + MAX_AGE}`;
+/**
+ * Token: personId.version.utgång.signatur. Versionen höjs vid "logga ut överallt" och när ett
+ * konto avböjs eller raderas, så att alla tidigare tokens slutar gälla.
+ */
+export async function issueToken(personId: string): Promise<string> {
+  const q = await db();
+  const [p] = await q<{ v: number }>(`select token_version as v from people where id = $1`, [personId]);
+  const payload = `${personId}.${p?.v ?? 0}.${Math.floor(Date.now() / 1000) + MAX_AGE}`;
   return `${payload}.${sign(payload)}`;
 }
 
@@ -86,14 +92,24 @@ export interface User {
 export const USER_SELECT = `select id, name, email, phone, role, status,
   (role = 'participant' and (coalesce(name, '') = '' or coalesce(phone, '') = '')) as needs_profile from people`;
 
+/** Gör alla personens tokens ogiltiga (logga ut överallt, avböjt eller raderat konto). */
+export async function revokeTokens(personId: string) {
+  const q = await db();
+  await q(`update people set token_version = token_version + 1 where id = $1`, [personId]);
+}
+
 export async function currentUser(request: Request): Promise<User | null> {
   if (!secret()) return null;
   const token = tokenFrom(request);
   if (!token) return null;
-  const [id, exp, sig] = token.split('.');
-  if (!id || !exp || !sig || !safeEqual(sig, sign(`${id}.${exp}`)) || Number(exp) < Date.now() / 1000) return null;
+  const [id, version, exp, sig] = token.split('.');
+  if (!id || !version || !exp || !sig || !safeEqual(sig, sign(`${id}.${version}.${exp}`)) || Number(exp) < Date.now() / 1000) return null;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const q = await db();
-  const [user] = await q<User & Record<string, unknown>>(`${USER_SELECT} where id = $1`, [id]);
+  const [user] = await q<User & Record<string, unknown>>(
+    `${USER_SELECT} where id = $1 and token_version = $2 and status <> 'rejected'`,
+    [id, Number(version)],
+  );
   return user ?? null;
 }
 

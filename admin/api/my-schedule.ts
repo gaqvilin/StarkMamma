@@ -29,8 +29,8 @@ export async function GET(request: Request) {
   const [extra] = await q<{ credits: number; punch: number; punch_valid: string | null }>(
     `select
        (select count(*) from credits c join rounds r on r.id = c.round_id
-        where c.person_id = $1 and c.used_booking_id is null and r.ends_on >= ($2::timestamptz)::date)::int as credits,
-       coalesce((select sum(remaining) from punch_cards where person_id = $1 and valid_until >= ($2::timestamptz)::date), 0)::int as punch,
+        where c.person_id = $1 and c.used_booking_id is null and r.ends_on >= ($2::timestamptz at time zone 'Europe/Stockholm')::date)::int as credits,
+       coalesce((select sum(remaining) from punch_cards where person_id = $1 and valid_until >= ($2::timestamptz at time zone 'Europe/Stockholm')::date), 0)::int as punch,
        (select to_char(max(valid_until), 'YYYY-MM-DD') from punch_cards where person_id = $1 and remaining > 0) as punch_valid`,
     [user.id, t],
   );

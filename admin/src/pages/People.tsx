@@ -241,6 +241,19 @@ function PersonForm({ person, groups, onClose, onSaved }: { person: Person | nul
           {saving ? 'Sparar…' : 'Spara'}
         </button>
       </form>
+      {person && (
+        <button
+          className="link danger-text"
+          style={{ marginTop: 24 }}
+          onClick={async () => {
+            if (!confirm(`Radera ${person.name}? Namn, e-post och telefon tas bort och personen kan inte logga in. Betalningar och kvitton sparas utan namn (bokföringslagen).`)) return;
+            await api('people-activate', { method: 'POST', body: { id: person.id, action: 'erase' } });
+            onSaved();
+          }}
+        >
+          Radera personens uppgifter (GDPR)
+        </button>
+      )}
     </aside>
   );
 }

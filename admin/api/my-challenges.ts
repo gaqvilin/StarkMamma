@@ -3,7 +3,7 @@
 import { requireUser } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
-import { now } from './_lib/time.js';
+import { todayStockholm } from './_lib/time.js';
 export { OPTIONS } from './_lib/http.js';
 
 const VISIBLE = `(c.program_id is null or exists (select 1 from online_access a where a.program_id = c.program_id and a.person_id = $1))`;
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const user = await requireUser(request, { active: true });
   if (user instanceof Response) return user;
   const q = await db();
-  const today = now().toISOString().slice(0, 10);
+  const today = todayStockholm();
   const challenges = await q<{ id: string }>(
     `select c.id, c.name, c.description, c.prize, to_char(c.starts_on, 'YYYY-MM-DD') as starts_on, to_char(c.ends_on, 'YYYY-MM-DD') as ends_on,
        $2::date between c.starts_on and c.ends_on as active,
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const b = await body<{ taskId?: string; done?: boolean; date?: string }>(request);
   if (!isUuid(b.taskId)) return bad('Ogiltig ruta');
   const q = await db();
-  const today = now().toISOString().slice(0, 10);
+  const today = todayStockholm();
   const [t] = await q<{ active: boolean; starts_on: string }>(
     `select $3::date between c.starts_on and c.ends_on as active, to_char(c.starts_on, 'YYYY-MM-DD') as starts_on
      from challenge_tasks t join challenges c on c.id = t.challenge_id where t.id = $2 and ${VISIBLE}`,

@@ -39,7 +39,7 @@ Samma upplägg som padelappen: Vite och React i `src/`, API som Vercel-funktione
 ```bash
 npm install
 npm run dev:demo   # påhittad demodata i minnet (PGlite); logga in med starkmammavarberg@gmail.com, koden visas på skärmen
-npm test           # 71 tester, varav attacktester i dev/attack.test.ts av API:et och reglerna mot demodatabasen
+npm test           # 82 tester, varav attacktester i dev/attack.test.ts av API:et och reglerna mot demodatabasen
 ```
 
 Mot riktiga databasen: sätt miljövariablerna nedan och kör `npm run dev`.

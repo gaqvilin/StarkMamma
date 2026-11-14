@@ -25,11 +25,12 @@ interface State {
   app: boolean;   // true = mobilappen, svaret går till starkmamma://login
   n: string;      // nonce, jämförs med cookie (skydd mot CSRF)
   exp: number;
+  c?: string;     // PKCE code_challenge från mobilappen (base64url av SHA-256 av verifieraren)
 }
 
-export function makeState(p: Provider, app: boolean): { state: string; nonce: string } {
+export function makeState(p: Provider, app: boolean, challenge?: string): { state: string; nonce: string } {
   const nonce = randomBytes(16).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({ p, app, n: nonce, exp: Date.now() + 10 * 60_000 } satisfies State)).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ p, app, n: nonce, exp: Date.now() + 10 * 60_000, c: challenge } satisfies State)).toString('base64url');
   const sig = createHmac('sha256', secret()).update(payload).digest('base64url');
   return { state: `${payload}.${sig}`, nonce };
 }

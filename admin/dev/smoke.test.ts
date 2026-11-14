@@ -20,7 +20,7 @@ async function loginAs(identifier: string) {
   const start = await import('../api/auth-start');
   const verify = await import('../api/auth-verify');
   const s1 = await call(start, 'POST', '/api/auth-start', { email: identifier });
-  const s2 = await call(verify, 'POST', '/api/auth-verify', { email: identifier, code: s1.data.demoCode });
+  const s2 = await call(verify, 'POST', '/api/auth-verify', { email: identifier, code: s1.data.demoCode, client: 'app' });
   token = s2.data.token;
   return s2.headers.get('set-cookie')!.split(';')[0];
 }
@@ -120,7 +120,7 @@ describe('admin-API', () => {
     expect(created.status).toBe(201);
     const after = await call(round, 'GET', '/api/round');
     expect(after.data.groups[0].members).toBe(g.members + 1);
-    const dup = await call(people, 'POST', '/api/people', { name: 'Kopia', phone: '0700000001' });
+    const dup = await call(people, 'POST', '/api/people', { name: 'Kopia', email: 'test@example.com' });
     expect(dup.status).toBe(409);
   });
 

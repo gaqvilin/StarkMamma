@@ -96,6 +96,8 @@ export async function cancel(
 ): Promise<{ status: string; credit: boolean }> {
   const s = await getSession(q, sessionId, now);
   if (s.started && !force) throw new RuleError('Passet har redan börjat');
+  // Ett pass som Emma ställt in ger inget tillgodo-pass via återbud (det skulle ge ett gratis pass).
+  if (s.status === 'cancelled' && !force) throw new RuleError('Passet är inställt');
   const st = await state(q, s, personId);
   if (!st.active) throw new RuleError('Du är inte bokad på passet');
   const inTime = force ? force === 'cancelled_in_time' : s.in_time;
@@ -131,7 +133,7 @@ export async function cancel(
       await q(`update bookings set status = 'cancelled_late', updated_at = now() where id = $1`, [b.id]);
     }
   }
-  if (!s.started) await offerToQueue(q, s);
+  if (!s.started && s.status !== 'cancelled') await offerToQueue(q, s);
   return { status, credit: st.member && inTime };
 }
 
@@ -164,23 +166,29 @@ async function claimSpot(sessionId: string, personId: string, source: string, ad
 export async function undoCancel(q: Query, sessionId: string, personId: string, now: Date, admin = false) {
   const s = await getSession(q, sessionId, now);
   if (s.started && !admin) throw new RuleError('Passet har redan börjat');
+  if (s.status === 'cancelled' && !admin) throw new RuleError('Passet är inställt');
   const st = await state(q, s, personId);
   if (!st.member || !st.booking || st.active) throw new RuleError('Det finns inget återbud att ångra');
-  const [credit] = await q<{ used: string | null }>(`select used_booking_id as used from credits where from_booking_id = $1`, [st.booking.id]);
-  if (credit?.used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
+  // Allt i en sats: tillgodo-passet låses (for update), så att det inte samtidigt kan användas på
+  // ett annat pass, och återbudet tas bara bort om tillgodo-passet är oanvänt och platsen finns kvar.
   const [, rows] = await tx([
     { text: `select pg_advisory_xact_lock(hashtext($1))`, params: [sessionId] },
     {
       text: `with s as (select * from sessions where id = $1), ${ROSTER_CTE},
+         c as (select used_booking_id from credits where from_booking_id = $2 for update),
+         room as (select $3 or (select count(*) from roster where status in ${ACTIVE}) < (select capacity from s) as ok),
          del as (
            delete from bookings where id = $2
-             and ($3 or (select count(*) from roster where status in ${ACTIVE}) < (select capacity from s))
+             and not exists (select 1 from c where used_booking_id is not null)
+             and (select ok from room)
            returning id)
-         select id from del`,
+         select (select id from del) as id,
+                exists (select 1 from c where used_booking_id is not null) as credit_used`,
       params: [sessionId, st.booking.id, admin],
     },
   ]);
-  if (!rows.length) throw new RuleError('Platsen har gått till någon annan');
+  if (rows[0]?.credit_used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
+  if (!rows[0]?.id) throw new RuleError('Platsen har gått till någon annan');
 }
 
 export async function availableCredits(q: Query, personId: string, roundId: string | null) {
@@ -253,11 +261,17 @@ export async function setAttendance(q: Query, sessionId: string, personId: strin
   // Efter ett återbud går det inte att bara säga "jag kommer": då skulle man behålla både platsen
   // och tillgodo-passet. Ett återbud ångras via undoCancel, som tar bort tillgodo-passet och
   // kontrollerar att platsen finns kvar.
+  if (s.status === 'cancelled') throw new RuleError('Passet är inställt');
   if (st.booking && st.booking.status.startsWith('cancelled')) {
     if (status === 'attending') throw new RuleError('Du har lämnat återbud. Ångra återbudet först.');
-    const [credit] = await q<{ used: string | null }>(`select used_booking_id as used from credits where from_booking_id = $1`, [st.booking.id]);
-    if (credit?.used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
-    await q(`delete from credits where from_booking_id = $1`, [st.booking.id]);
+    // Atomiskt: tillgodo-passet tas bort bara om det är oanvänt.
+    const [r] = await q<{ used: boolean }>(
+      `with c as (select id, used_booking_id from credits where from_booking_id = $1 for update),
+         del as (delete from credits where id in (select id from c where used_booking_id is null) returning 1)
+       select exists (select 1 from c where used_booking_id is not null) as used, (select count(*) from del) as removed`,
+      [st.booking.id],
+    );
+    if (r?.used) throw new RuleError('Tillgodo-passet är redan använt på ett annat pass');
   }
   if (st.member) {
     await q(

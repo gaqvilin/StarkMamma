@@ -1,4 +1,5 @@
 // GET /api/oauth-callback?code&state -> loggar in och skickar tillbaka till admin eller appen.
+import { createHash, randomBytes } from 'node:crypto';
 import { issueToken, sessionCookie } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { APP_REDIRECT, NONCE_COOKIE, exchange, readState } from './_lib/oauth.js';
@@ -39,6 +40,12 @@ export async function GET(request: Request) {
   );
   if (!person) {
     if (!profile.email || !profile.emailVerified) return fail(NO_EMAIL);
+    // Emmas konto kopplas aldrig automatiskt till ett Facebook-konto via e-post: Facebook anger
+    // inte uttryckligen att adressen är verifierad. Hon loggar in med e-post och kod i stället.
+    if (state.p === 'facebook') {
+      const [owner] = await q<{ role: string }>(`select role from people where lower(email) = $1`, [profile.email]);
+      if (owner?.role === 'trainer') return fail('Logga in med din e-post och en kod.');
+    }
     person = await findOrCreateByEmail(q, profile.email, state.p, profile.name);
     await q(
       `insert into identities (provider, subject, person_id, email) values ($1, $2, $3, $4) on conflict do nothing`,
@@ -48,8 +55,14 @@ export async function GET(request: Request) {
   const [{ status }] = await q<{ status: string }>(`select status from people where id = $1`, [person.id]);
   if (status === 'rejected') return fail('Kontot är inte aktivt. Kontakta Emma.');
 
-  const token = issueToken(person.id);
-  return state.app
-    ? redirect(`${APP_REDIRECT}?token=${encodeURIComponent(token)}`)
-    : redirect('/', [sessionCookie(token)]);
+  if (state.app) {
+    // Ingen token i länken: en kortlivad engångskod som bara kan bytas av appen som har PKCE-verifieraren.
+    const exchangeCode = randomBytes(32).toString('base64url');
+    await q(
+      `insert into oauth_exchanges (code_hash, person_id, code_challenge, expires_at) values ($1, $2, $3, now() + interval '5 minutes')`,
+      [createHash('sha256').update(exchangeCode).digest('hex'), person.id, state.c],
+    );
+    return redirect(`${APP_REDIRECT}?code=${encodeURIComponent(exchangeCode)}`);
+  }
+  return redirect('/', [sessionCookie(await issueToken(person.id))]);
 }

@@ -26,12 +26,15 @@ export async function GET(request: Request) {
   );
   // Uppdatera status för filmer som laddas upp eller kodas om hos Bunny.
   if (videoConfigured()) {
-    for (const w of workouts as { id: string; video_provider: string; video_id: string | null; video_status: string | null }[]) {
-      if (w.video_provider === 'bunny' && w.video_id && w.video_status !== 'ready' && w.video_status !== 'failed') {
-        w.video_status = await videoStatus(w.video_id);
+    const pending = (workouts as { id: string; video_provider: string; video_id: string | null; video_status: string | null }[]).filter(
+      (w) => w.video_provider === 'bunny' && w.video_id && w.video_status !== 'ready' && w.video_status !== 'failed',
+    );
+    await Promise.all(
+      pending.map(async (w) => {
+        w.video_status = await videoStatus(w.video_id!);
         await q(`update workouts set video_status = $2 where id = $1`, [w.id, w.video_status]);
-      }
-    }
+      }),
+    );
   }
   const members = await q(
     `select p.id, p.name, p.email, p.phone, a.source, to_char(a.granted_at at time zone 'Europe/Stockholm', 'YYYY-MM-DD') as granted_on,

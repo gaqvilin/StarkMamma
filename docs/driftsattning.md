@@ -52,4 +52,4 @@ Admin finns då på http://localhost:5173. Logga in med `starkmammavarberg@gmail
 cd admin && npm test
 ```
 
-Det kör 71 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar, bekräftelser, onlineträning, bingo, film och inloggning, samt attacktester: förfalskad inloggning, åtkomst till andras data, ogiltig indata, samtidiga bokningar och dubbelklick, fusk med tillgodo och klipp, och sommartid.
+Det kör 82 tester av reglerna: återbud, tillgodo, bokning, kö, flyttade pass, anmälan, fördelning, betalningar, bekräftelser, onlineträning, bingo, film och inloggning, samt attacktester: förfalskad inloggning, åtkomst till andras data, ogiltig indata, samtidiga bokningar och dubbelklick, fusk med tillgodo och klipp, och sommartid.

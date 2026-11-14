@@ -20,7 +20,7 @@ async function call(name: string, method: string, auth: { cookie?: string; token
 }
 async function login(email: string) {
   const s1 = await call('auth-start', 'POST', {}, { email });
-  const s2 = await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode });
+  const s2 = await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode, client: 'app' });
   return { cookie: s2.headers.get('set-cookie')!.split(';')[0], token: s2.data.token as string, id: s2.data.user.id as string };
 }
 
@@ -36,12 +36,13 @@ beforeAll(async () => {
 
 describe('förfalskad inloggning', () => {
   it('ändrad token, annan persons id i token och utgången token nekas', async () => {
-    const [id, exp, sig] = anna.token.split('.');
-    const forged = [emma.id, exp, sig].join('.');
+    const [id, v, exp, sig] = anna.token.split('.');
+    const forged = [emma.id, v, exp, sig].join('.');
     expect((await call('me', 'GET', { token: forged })).data.user).toBeNull();
     expect((await call('week', 'GET', { token: forged }, undefined, '?from=2026-11-16')).status).toBe(401);
-    expect((await call('me', 'GET', { token: `${id}.${Number(exp) + 999}.${sig}` })).data.user).toBeNull();
-    expect((await call('me', 'GET', { token: `${id}.1.${sig}` })).data.user).toBeNull();
+    expect((await call('me', 'GET', { token: `${id}.${v}.${Number(exp) + 999}.${sig}` })).data.user).toBeNull();
+    expect((await call('me', 'GET', { token: `${id}.${v}.1.${sig}` })).data.user).toBeNull();
+    expect((await call('me', 'GET', { token: `${id}.${Number(v) + 1}.${exp}.${sig}` })).data.user).toBeNull();
     expect((await call('me', 'GET', { token: 'skräp' })).data.user).toBeNull();
     expect((await call('me', 'GET', { cookie: 'sm_session=a.b.c' })).data.user).toBeNull();
   });
@@ -51,7 +52,7 @@ describe('förfalskad inloggning', () => {
     const s1 = await call('auth-start', 'POST', {}, { email });
     const wrong = s1.data.demoCode === '000000' ? '111111' : '000000';
     for (let i = 0; i < 5; i++) expect((await call('auth-verify', 'POST', {}, { email, code: wrong })).status).toBe(401);
-    expect((await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode })).status).toBe(401);
+    expect((await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode, client: 'app' })).status).toBe(401);
   });
 
   it('kod för en adress fungerar inte för en annan', async () => {
@@ -64,7 +65,7 @@ describe('förfalskad inloggning', () => {
     await call('people-activate', 'POST', emma, { id: x.id, action: 'reject' });
     const s1 = await call('auth-start', 'POST', {}, { email: 'avbojd@example.com' }).catch(() => null);
     await new Promise((r) => setTimeout(r, 0));
-    expect((await call('my-schedule', 'GET', x)).status).toBe(403);
+    expect((await call('my-schedule', 'GET', x)).status).toBe(401); // tokens slutar gälla när kontot avböjs
     void s1;
   });
 
@@ -72,6 +73,96 @@ describe('förfalskad inloggning', () => {
     const r = await raw('notices', 'POST', { cookie: emma.cookie, origin: 'https://ond.example.com', 'content-type': 'text/plain' },
       JSON.stringify({ audience: 'all', title: 'Hackad', body: 'Hej' }));
     expect(r.status).toBe(403);
+  });
+});
+
+describe('fynd från säkerhetsgranskningen', () => {
+  it('H1: tusentals samtidiga gissningar på koden räknas — högst 5 kontrolleras', async () => {
+    const email = 'brute@example.com';
+    const s1 = await call('auth-start', 'POST', {}, { email });
+    const guesses = Array.from({ length: 60 }, (_, i) => String((Number(s1.data.demoCode) + 1 + i) % 1_000_000).padStart(6, '0'));
+    const rs = await Promise.all(guesses.map((code) => call('auth-verify', 'POST', {}, { email, code })));
+    expect(rs.filter((r) => r.data?.error === 'Fel kod')).toHaveLength(5);
+    expect((await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode })).status).toBe(401); // spärrad
+  });
+
+  it('webben får ingen token i svaret, bara en HttpOnly-cookie', async () => {
+    const s1 = await call('auth-start', 'POST', {}, { email: 'webb@example.com' });
+    const r = await call('auth-verify', 'POST', {}, { email: 'webb@example.com', code: s1.data.demoCode });
+    expect(r.data.token).toBeUndefined();
+    expect(r.headers.get('set-cookie')).toContain('HttpOnly');
+  });
+
+  it('H2: dubbelklick på "betald" ger ett kvitto och ett klippkort; ångra tar bort oanvänt kort', async () => {
+    const c = (await call('charges', 'POST', emma, { personId: ebba.id, description: '10-kort', amount: 1200, kind: 'punch_card' })).data.id;
+    const before = (await call('my-schedule', 'GET', ebba)).data.punch;
+    const rs = await Promise.all([1, 2, 3].map(() => call('charges-pay', 'POST', emma, { id: c })));
+    expect(rs.filter((r) => r.data.receipt_number)).toHaveLength(1);
+    expect((await call('my-schedule', 'GET', ebba)).data.punch).toBe(before + 10);
+    await call('charges-pay', 'POST', emma, { id: c, undo: true });
+    expect((await call('my-schedule', 'GET', ebba)).data.punch).toBe(before);
+    await call('charges-pay', 'POST', emma, { id: c });
+    expect((await call('my-schedule', 'GET', ebba)).data.punch).toBe(before + 10);
+  });
+
+  it('M1: efter att Emma tagit bort tillgången kan "Jag har swishat" inte ge den tillbaka', async () => {
+    const p = (await call('online', 'POST', emma, { name: 'Återkallad', price: 200 })).data.id;
+    const buy = await call('my-online', 'POST', ebba, { programId: p, action: 'buy' });
+    expect((await call('my-charges', 'POST', ebba, { id: buy.data.chargeId })).data.access).toBe(true);
+    await call('online-access', 'POST', emma, { programId: p, personId: ebba.id, action: 'revoke' });
+    const again = await call('my-charges', 'POST', ebba, { id: buy.data.chargeId });
+    expect(again.data?.access ?? false).toBe(false);
+    const programs = (await call('my-online', 'GET', ebba)).data.programs.map((x: { id: string }) => x.id);
+    expect(programs).not.toContain(p);
+  });
+
+  it('M3: ett pass som Emma ställt in ger inget tillgodo-pass via återbud', async () => {
+    const s = (await call('my-schedule', 'GET', ebba)).data.sessions.find((x: { ordinary: boolean; my_status: string; in_time: boolean; status: string }) => x.ordinary && x.my_status === 'booked' && x.in_time && x.status !== 'cancelled');
+    await call('session', 'PUT', emma, { id: s.id, cancelled: true });
+    const before = (await call('my-schedule', 'GET', ebba)).data.credits;
+    expect((await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'cancel' })).status).toBe(400);
+    expect((await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'attend' })).status).toBe(400);
+    expect((await call('my-schedule', 'GET', ebba)).data.credits).toBe(before);
+    await call('session', 'PUT', emma, { id: s.id, cancelled: false });
+  });
+
+  it('M2: ångra återbud samtidigt som tillgodo-passet används ger aldrig både plats och extrapass', async () => {
+    const sched = (await call('my-schedule', 'GET', ebba)).data;
+    const s = sched.sessions.find((x: { ordinary: boolean; my_status: string; in_time: boolean; status: string }) => x.ordinary && x.my_status === 'booked' && x.in_time && x.status !== 'cancelled');
+    await call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'cancel' });
+    const other = (await call('bookable', 'GET', ebba)).data.sessions.find((x: { booked: number; capacity: number; mine: boolean; kind: string }) => x.booked < x.capacity && !x.mine && x.kind === 'ordinary');
+    const [undo, book] = await Promise.all([
+      call('my-booking', 'POST', ebba, { sessionId: s.id, action: 'undo' }),
+      call('my-booking', 'POST', ebba, { sessionId: other.id, action: 'book', source: 'credit' }),
+    ]);
+    expect(undo.status === 200 && book.status === 200).toBe(false);
+  });
+
+  it('M5: "logga ut överallt" och avböjt konto gör gamla tokens ogiltiga', async () => {
+    const x = await login('utloggad@example.com');
+    expect((await call('me', 'GET', x)).data.user).not.toBeNull();
+    await call('logout', 'POST', x, { everywhere: true });
+    expect((await call('me', 'GET', x)).data.user).toBeNull();
+    const y = await login('avbojd2@example.com');
+    await call('people-activate', 'POST', emma, { id: y.id, action: 'reject' });
+    expect((await call('my-notices', 'GET', y)).status).toBe(401);
+  });
+
+  it('GDPR: deltagaren kan hämta sina uppgifter, och Emma kan radera en person', async () => {
+    const z = await login('radera.mig@example.com');
+    await call('profile', 'POST', z, { name: 'Radera Mig', phone: '0701112299' });
+    expect((await call('my-data', 'GET', z)).data.person.email).toBe('radera.mig@example.com');
+    await call('people-activate', 'POST', emma, { id: z.id, action: 'erase' });
+    expect((await call('me', 'GET', z)).data.user).toBeNull();
+    const people = (await call('people', 'GET', emma)).data.people;
+    expect(people.some((p: { email: string | null }) => p.email === 'radera.mig@example.com')).toBe(false);
+  });
+
+  it('opublicerade filmer kan inte spelas i förväg', async () => {
+    const p = (await call('online', 'POST', emma, { name: 'Framtid', price: 0 })).data.id;
+    const w = (await call('workouts', 'POST', emma, { programId: p, title: 'Kommer', videoUrl: 'https://youtu.be/x', publishOn: '2027-01-01' })).data.id;
+    await call('online-access', 'POST', emma, { programId: p, personId: ebba.id, action: 'grant' });
+    expect((await call('video-play', 'GET', ebba, undefined, `?workoutId=${w}`)).status).toBe(403);
   });
 });
 

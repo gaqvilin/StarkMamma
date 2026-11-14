@@ -1,6 +1,6 @@
-// POST /api/people-activate {id, action: 'activate' | 'reject', groupIds?} -> Emma aktiverar eller avböjer
+// POST /api/people-activate {id, action: 'activate' | 'reject' | 'erase', groupIds?} -> Emma aktiverar eller avböjer
 // ett nytt konto. Vid aktivering kan grupper väljas direkt, och personen får en notis.
-import { requireTrainer } from './_lib/auth.js';
+import { requireTrainer, revokeTokens } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, body, isUuid, json } from './_lib/http.js';
 
@@ -9,12 +9,31 @@ export async function POST(request: Request) {
   if (denied) return denied;
   const input = await body<{ id?: string; action?: string; groupIds?: string[] }>(request);
   if (!isUuid(input.id)) return bad('Ogiltigt konto');
-  if (input.action !== 'activate' && input.action !== 'reject') return bad('Okänd åtgärd');
+  if (!['activate', 'reject', 'erase'].includes(input.action ?? '')) return bad('Okänd åtgärd');
   const q = await db();
 
   if (input.action === 'reject') {
     const rows = await q(`update people set status = 'rejected' where id = $1 and role = 'participant' returning id`, [input.id]);
-    return rows.length ? json({ ok: true }) : bad('Kontot finns inte', 404);
+    if (!rows.length) return bad('Kontot finns inte', 404);
+    await revokeTokens(input.id!);
+    return json({ ok: true });
+  }
+  if (input.action === 'erase') {
+    // GDPR: personuppgifterna tas bort. Betalningar och kvitton behålls (bokföringslagen) men
+    // är inte längre kopplade till ett namn.
+    const rows = await q(
+      `update people set name = 'Borttagen person', email = null, phone = null, health_note = null,
+         health_note_consent_at = null, status = 'rejected' where id = $1 and role = 'participant' returning id`,
+      [input.id],
+    );
+    if (!rows.length) return bad('Kontot finns inte', 404);
+    await q(`delete from identities where person_id = $1`, [input.id]);
+    await q(`delete from push_tokens where person_id = $1`, [input.id]);
+    await q(`delete from login_codes where person_id = $1`, [input.id]);
+    await q(`delete from group_members where person_id = $1`, [input.id]);
+    await q(`delete from waitlist where person_id = $1`, [input.id]);
+    await revokeTokens(input.id!);
+    return json({ ok: true });
   }
 
   const [p] = await q<{ name: string; phone: string | null }>(

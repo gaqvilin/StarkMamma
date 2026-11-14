@@ -24,6 +24,9 @@ export async function GET(request: Request) {
   );
   let reminders = 0;
   for (const s of sessions) {
+    // Kör cronen två gånger (omförsök) skickas ingen dubblett.
+    const [sent] = await q(`select 1 from notices where audience = $1 and title like 'Imorgon kl%'`, [`session:${s.id}`]);
+    if (sent) continue;
     const people = await q<{ person_id: string }>(
       `with s as (select * from sessions where id = $1), ${ROSTER_CTE}
        select r.person_id from roster r join people p on p.id = r.person_id where r.status = 'booked' and p.status = 'active'`,
@@ -38,17 +41,21 @@ export async function GET(request: Request) {
       )
     ).recipients;
   }
-  const due = await q<{ person_id: string; description: string; amount: number }>(
-    `select person_id, description, amount from charges
-     where status = 'unpaid' and due_on = (($1::timestamptz at time zone 'Europe/Stockholm')::date + 2)`,
+  const due = await q<{ id: string; person_id: string; description: string; amount: number }>(
+    `select c.id, c.person_id, c.description, c.amount from charges c
+     where c.status = 'unpaid' and c.due_on = (($1::timestamptz at time zone 'Europe/Stockholm')::date + 2)
+       and not exists (select 1 from notices n where n.audience = 'due:' || c.id::text)`,
     [t],
   );
   for (const c of due) {
     await sendNotice(
       q,
-      { title: 'Påminnelse om betalning', body: `${c.description}, ${c.amount} kr, ska vara betald om två dagar. Betala enkelt under Betala i appen.`, audience: `person:${c.person_id}` },
+      { title: 'Påminnelse om betalning', body: `${c.description}, ${c.amount} kr, ska vara betald om två dagar. Betala enkelt under Betala i appen.`, audience: `due:${c.id}` },
       [c.person_id],
     );
   }
+  // Städning: gamla inloggningskoder (med IP-adress) och engångskoder för appen sparas inte längre än nödvändigt.
+  await q(`delete from login_codes where created_at < now() - interval '30 days'`);
+  await q(`delete from oauth_exchanges where expires_at < now() - interval '1 day'`);
   return json({ sessions: sessions.length, reminders, payments: due.length });
 }

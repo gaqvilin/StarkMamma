@@ -20,7 +20,7 @@ async function call(name: string, method: string, auth: { cookie?: string; token
 
 async function login(email: string) {
   const s1 = await call('auth-start', 'POST', {}, { email });
-  const s2 = await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode });
+  const s2 = await call('auth-verify', 'POST', {}, { email, code: s1.data.demoCode, client: 'app' });
   return { cookie: s2.headers.get('set-cookie')!.split(';')[0], token: s2.data.token as string };
 }
 

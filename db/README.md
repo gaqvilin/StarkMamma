@@ -14,6 +14,7 @@
 | `migrations/009_online_and_challenges.sql` | Onlineträning (program, pass i text eller film, tillgång, avbockning) och utmaningar (bingo, avbockning med datum, vinnare) |
 | `migrations/010_hardening.sql` | Skydd mot dubbla betalningar, index för vanliga uppslag, IP-spärr för koder och tillgång direkt vid "Jag har swishat" |
 | `migrations/011_video.sql` | Film hos Bunny Stream |
+| `migrations/012_review_fixes.sql` | Återkallbara inloggningar, klippkort kopplade till betalning, engångskoder för appens Google- och Facebook-inloggning (PKCE) |
 | `migrations/005_self_signup.sql` | Egen registrering: kontostatus (väntar/aktiv/avböjd) och koder till nya e-postadresser |
 | `migrations/002_seed_ct_v45_51.sql` | Emma som tränare och CT-omgång v 45–51 2026 med priser, 10 grupper och 70 pass, inklusive de flyttade passen v 47 och v 51 |
 

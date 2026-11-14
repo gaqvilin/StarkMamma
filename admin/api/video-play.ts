@@ -3,6 +3,7 @@
 import { requireUser } from './_lib/auth.js';
 import { db } from './_lib/db.js';
 import { bad, isUuid, json } from './_lib/http.js';
+import { todayStockholm } from './_lib/time.js';
 import { playUrl, videoConfigured, videoStatus } from './_lib/video.js';
 export { OPTIONS } from './_lib/http.js';
 
@@ -14,9 +15,10 @@ export async function GET(request: Request) {
   const q = await db();
   const [w] = await q<{ video_provider: string; video_id: string | null; video_url: string | null; video_status: string | null; allowed: boolean }>(
     `select w.video_provider, w.video_id, w.video_url, w.video_status,
-       ($2 or exists (select 1 from online_access a where a.program_id = w.program_id and a.person_id = $1)) as allowed
+       ($2 or (exists (select 1 from online_access a where a.program_id = w.program_id and a.person_id = $1)
+               and (w.publish_on is null or w.publish_on <= $4::date))) as allowed
      from workouts w where w.id = $3`,
-    [user.id, user.role === 'trainer', id],
+    [user.id, user.role === 'trainer', id, todayStockholm()],
   );
   if (!w || !w.allowed) return bad('Du har inte tillgång till filmen', 403);
   if (w.video_provider === 'link') return w.video_url ? json({ url: w.video_url }) : bad('Passet har ingen film', 404);
