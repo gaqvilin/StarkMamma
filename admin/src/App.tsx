@@ -78,7 +78,7 @@ function Shell({ page, Page, onLogout }: { page: Key; Page: () => React.ReactEle
           Logga ut
         </button>
       </aside>
-      <main className="main">
+      <main className="main" key={page}>
         <Page />
       </main>
     </div>

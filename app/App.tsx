@@ -10,6 +10,7 @@ import { LoginScreen, PendingScreen, ProfileScreen } from './src/screens/Login';
 import { BookScreen, HomeScreen, ImportantNotices, InboxScreen, InfoPageScreen, PayScreen, SignupScreen } from './src/screens/Participant';
 import { OnlineScreen } from './src/screens/Online';
 import { PushScreen, RegistrationsScreen, RosterScreen, TrainerPayScreen } from './src/screens/Trainer';
+import { FadeIn, haptic } from './src/motion';
 import { colors } from './src/theme';
 import { ToastProvider } from './src/toast';
 
@@ -140,16 +141,18 @@ function Shell({ role }: { role: Role }) {
       </View>
 
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content}>
-        {view === 'info' && openNotice ? (
-          <InfoPageScreen notice={openNotice} onBack={() => setView('inbox')} onAck={ack} />
-        ) : view === 'inbox' ? (
-          <InboxScreen notices={notices} onOpen={open} onAck={ack} />
-        ) : (
-          <>
-            {role === 'deltagare' ? <ImportantNotices notices={notices} onOpen={open} onAck={ack} /> : null}
-            <Screen key={tab} />
-          </>
-        )}
+        <FadeIn key={`${view}-${tab}-${view === 'info' ? openNotice?.id : ''}`}>
+          {view === 'info' && openNotice ? (
+            <InfoPageScreen notice={openNotice} onBack={() => setView('inbox')} onAck={ack} />
+          ) : view === 'inbox' ? (
+            <InboxScreen notices={notices} onOpen={open} onAck={ack} />
+          ) : (
+            <>
+              {role === 'deltagare' ? <ImportantNotices notices={notices} onOpen={open} onAck={ack} /> : null}
+              <Screen key={tab} />
+            </>
+          )}
+        </FadeIn>
         {role === 'deltagare' && view === 'tabs' && current.key === 'home' ? (
           <Pressable onPress={signOut} accessibilityRole="button" style={{ alignSelf: 'center', padding: 16 }}>
             <Text style={{ color: colors.muted, fontWeight: '700' }}>Logga ut</Text>
@@ -162,7 +165,18 @@ function Shell({ role }: { role: Role }) {
           {tabs.map((t) => {
             const active = t.key === current.key && view === 'tabs';
             return (
-              <Pressable key={t.key} onPress={() => { setTab(t.key); setView('tabs'); toTop(); }} style={styles.tab}>
+              <Pressable
+                key={t.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  if (!active) haptic('select');
+                  setTab(t.key);
+                  setView('tabs');
+                  toTop();
+                }}
+                style={styles.tab}
+              >
                 <View style={[styles.tabIndicator, active && { backgroundColor: colors.ink }]} />
                 <Text style={[styles.tabLabel, active && { color: colors.ink, fontWeight: '800' }]}>{t.label}</Text>
               </Pressable>
@@ -188,7 +202,9 @@ function Gate() {
       <SafeAreaView style={styles.root}>
         <StatusBar style="dark" />
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <LoginScreen />
+          <FadeIn style={{ flex: 1 }}>
+            <LoginScreen />
+          </FadeIn>
         </ScrollView>
       </SafeAreaView>
     );
@@ -196,7 +212,9 @@ function Gate() {
     return (
       <SafeAreaView style={styles.root}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <ProfileScreen />
+          <FadeIn style={{ flex: 1 }}>
+            <ProfileScreen />
+          </FadeIn>
         </ScrollView>
       </SafeAreaView>
     );
@@ -205,9 +223,11 @@ function Gate() {
     return (
       <SafeAreaView style={styles.root}>
         <ScrollView contentContainerStyle={styles.content}>
+          <FadeIn>
           <PendingScreen>
             <SignupScreen />
           </PendingScreen>
+          </FadeIn>
         </ScrollView>
       </SafeAreaView>
     );

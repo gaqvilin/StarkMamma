@@ -6,6 +6,7 @@ import { WD, api, dayLabel, shortDate } from '../api';
 import { useApi } from '../auth';
 import { colors } from '../theme';
 import { useToast } from '../toast';
+import { FadeIn, haptic } from '../motion';
 import { Bar, Button, Card, Chip, H1, H2, P, Pill, Row } from '../ui';
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -136,7 +137,13 @@ export function RosterScreen() {
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {sessions.map((s, i) => (
                 <View key={s.id} style={{ borderTopWidth: i ? 1 : 0, borderColor: colors.line }}>
-                  <Pressable onPress={() => setOpen(open === s.id ? null : s.id)} style={{ padding: 14, opacity: s.status === 'cancelled' ? 0.5 : 1 }}>
+                  <Pressable
+                    onPress={() => {
+                      haptic('select');
+                      setOpen(open === s.id ? null : s.id);
+                    }}
+                    style={({ pressed }) => ({ padding: 14, opacity: s.status === 'cancelled' ? 0.5 : 1, backgroundColor: pressed ? '#F2EEE9' : 'transparent' })}
+                  >
                     <Row style={{ justifyContent: 'space-between' }}>
                       <Row>
                         <Text style={{ fontWeight: '800', fontSize: 17 }}>{s.time}</Text>
@@ -156,7 +163,11 @@ export function RosterScreen() {
                       {s.queue ? <Pill tone="accent" text={`${s.queue} i kö`} /> : null}
                     </Row>
                   </Pressable>
-                  {open === s.id && <SessionDetail id={s.id} onChanged={week.reload} />}
+                  {open === s.id && (
+                    <FadeIn>
+                      <SessionDetail id={s.id} onChanged={week.reload} />
+                    </FadeIn>
+                  )}
                 </View>
               ))}
             </Card>

@@ -6,6 +6,7 @@ import { api, shortDate } from '../api';
 import { useApi } from '../auth';
 import { colors } from '../theme';
 import { useToast } from '../toast';
+import { FadeIn, PressableScale, haptic } from '../motion';
 import { Button, Card, H1, H2, P, Pill, Row } from '../ui';
 
 interface Workout {
@@ -46,7 +47,12 @@ export function OnlineScreen() {
     }
   };
 
-  if (open) return <WorkoutView w={open} onBack={() => setOpen(null)} onDone={setDone} />;
+  if (open)
+    return (
+      <FadeIn key={open.id}>
+        <WorkoutView w={open} onBack={() => setOpen(null)} onDone={setDone} />
+      </FadeIn>
+    );
   if (!online.data || !bingo.data) return <P muted style={{ marginTop: 20 }}>{online.error || bingo.error || 'Hämtar…'}</P>;
   const { programs, workouts, upcoming, offers } = online.data;
 
@@ -69,7 +75,7 @@ export function OnlineScreen() {
               {upcoming.n ? ` · nästa pass kommer ${upcoming.next ? shortDate(upcoming.next) : 'snart'}` : ''}
             </P>
             {list.map((w) => (
-              <Pressable key={w.id} onPress={() => setOpen(w)} accessibilityRole="button">
+              <PressableScale key={w.id} onPress={() => setOpen(w)} accessibilityRole="button" scaleTo={0.98}>
                 <Card style={{ paddingVertical: 12 }}>
                   <Row style={{ justifyContent: 'space-between' }}>
                     <View style={{ flex: 1 }}>
@@ -83,7 +89,7 @@ export function OnlineScreen() {
                     <Text style={{ color: colors.muted, fontSize: 20 }}>›</Text>
                   </Row>
                 </Card>
-              </Pressable>
+              </PressableScale>
             ))}
             {!list.length && <P muted>Inga pass publicerade än.</P>}
           </View>
@@ -174,6 +180,7 @@ function Bingo({ challenge, tasks, onChanged }: { challenge: ChallengeData['chal
   const toggle = async (t: ChallengeData['tasks'][number]) => {
     if (!challenge.active) return;
     try {
+      haptic(t.done_on ? 'select' : 'success');
       await api('my-challenges', { method: 'POST', body: { taskId: t.id, done: !t.done_on } });
       onChanged();
     } catch (e) {
@@ -193,8 +200,9 @@ function Bingo({ challenge, tasks, onChanged }: { challenge: ChallengeData['chal
       {challenge.description ? <P style={{ marginTop: 6 }}>{challenge.description}</P> : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
         {tasks.map((t) => (
-          <Pressable
+          <PressableScale
             key={t.id}
+            scaleTo={0.93}
             onPress={() => toggle(t)}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: !!t.done_on }}
@@ -215,7 +223,7 @@ function Bingo({ challenge, tasks, onChanged }: { challenge: ChallengeData['chal
             <Text style={{ fontSize: 11, fontWeight: '800', color: t.done_on ? colors.ok : colors.muted }}>
               {t.done_on ? `Klar ${shortDate(t.done_on)}` : 'Tryck när klar'}
             </Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </View>
       {challenge.won ? (

@@ -210,3 +210,32 @@ tr.clickable:hover td { background: #faf8f6; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .week { grid-template-columns: 1fr !important; }
 }
+
+/* Mjuka rörelser: knappar som fjädrar, vyer som tonar in och lådor som glider in.
+   Stängs av för den som valt "minska rörelse" i operativsystemet. */
+:root { --ease-out: cubic-bezier(0.22, 1, 0.36, 1); }
+.btn, .tab, .chip, .sidebar nav a, .session, .pick, input, select, textarea, .card.workout, .bingo-cell {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 200ms ease, transform 160ms var(--ease-out), opacity 180ms ease;
+}
+.btn:active:not(:disabled), .tab:active, .pick:active { transform: scale(0.97); }
+.session:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(21, 21, 21, 0.06); }
+.session:active { transform: scale(0.985); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.bar-fill { transition: width 500ms var(--ease-out); }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+.main > * { animation: fade-up 280ms var(--ease-out) both; }
+.drawer { animation: slide-in 260ms var(--ease-out) both; }
+.card.edit, .card.ack, .ok-text, .error { animation: fade-up 220ms var(--ease-out) both; }
+.week .day { animation: fade-up 320ms var(--ease-out) both; }
+.week .day:nth-child(2) { animation-delay: 30ms; }
+.week .day:nth-child(3) { animation-delay: 60ms; }
+.week .day:nth-child(4) { animation-delay: 90ms; }
+.week .day:nth-child(5) { animation-delay: 120ms; }
+.week .day:nth-child(6) { animation-delay: 150ms; }
+.login-card { animation: fade-up 360ms var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { PressableScale, haptic } from './motion';
 import { colors, radius } from './theme';
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
@@ -38,20 +39,24 @@ export function Button({
   const bg = { primary: colors.ink, secondary: colors.card, danger: colors.dangerSoft, ghost: 'transparent' }[variant];
   const fg = { primary: '#fff', secondary: colors.ink, danger: colors.danger, ghost: colors.accent }[variant];
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
-      onPress={onPress}
+      accessibilityState={{ disabled: !!disabled }}
+      onPress={() => {
+        haptic(variant === 'primary' || variant === 'danger' ? 'tap' : 'select');
+        onPress();
+      }}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={[
         styles.btn,
         small && styles.btnSmall,
-        { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.75 : 1 },
+        { backgroundColor: bg, opacity: disabled ? 0.4 : 1 },
         variant === 'secondary' && { borderWidth: 1, borderColor: colors.line },
         style,
       ]}
     >
       <Text style={[styles.btnText, small && { fontSize: 14 }, { color: fg }]}>{title}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -90,12 +95,18 @@ export function Bar({ value, max, min }: { value: number; max: number; min?: num
 
 export function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={() => {
+        haptic('select');
+        onPress();
+      }}
+      scaleTo={0.94}
       style={[styles.chip, active && { backgroundColor: colors.ink, borderColor: colors.ink }]}
     >
       <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
