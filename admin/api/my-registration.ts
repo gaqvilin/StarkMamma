@@ -85,13 +85,14 @@ export async function POST(request: Request) {
   const installments = !!b.installments && perWeek > 1 && !!tier.first_installment;
 
   const [reg] = await q<{ id: string; status: string }>(
-    `insert into registrations (round_id, person_id, per_week, installments, friend_name)
-     values ($1, $2, $3, $4, $5)
+    `insert into registrations (round_id, person_id, per_week, installments, friend_name, created_at)
+     values ($1, $2, $3, $4, $5, coalesce($6::timestamptz, clock_timestamp()))
      on conflict (round_id, person_id) do update set per_week = excluded.per_week, installments = excluded.installments,
        friend_name = excluded.friend_name,
        status = case when registrations.status = 'withdrawn' then 'pending' else registrations.status end
      returning id, status`,
-    [round.id, user.id, perWeek, installments, (b.friendName ?? '').trim().slice(0, 100) || null],
+    // I produktion sätts tiden av databasen (mikrosekunder). I testläget följer den låtsastiden.
+    [round.id, user.id, perWeek, installments, (b.friendName ?? '').trim().slice(0, 100) || null, process.env.DEMO_DB && process.env.FAKE_NOW ? now().toISOString() : null],
   );
   if (reg.status === 'confirmed') return bad('Din plats är redan bekräftad. Kontakta Emma om du vill ändra.');
   await q(`delete from registration_choices where registration_id = $1`, [reg.id]);
